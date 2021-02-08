@@ -49,6 +49,18 @@ int strcompare(char *str1, char* str2){
     return -1;
 }
 
+int convertstrtoint(char *str) {
+    int num = *str - '0';
+    while(*(str + 1) != '\0') {
+        num *= 10;
+        int strNum = *(str + 1) - '0';
+        num += strNum;
+        str++;
+    }
+
+    return num;
+}
+
 /**
  * @brief Validates command line arguments passed to the program.
  * @details This function will validate all the arguments passed to the
@@ -67,9 +79,14 @@ int strcompare(char *str1, char* str2){
 
 int validargs(int argc, char **argv) {
     // TO BE IMPLEMENTED
+    global_options = 0;
 
-    // check if number of arguments are valid
-    if(argc <= 1 || argc > 10) {
+    int isinputbirp = 0;
+    int isoutputbirp = 0;
+
+    // first argument is not bin/birp
+    char *binbirp = *argv;
+    if(strcompare(binbirp, "bin/birp") != 0) {
         return -1;
     }
 
@@ -85,13 +102,13 @@ int validargs(int argc, char **argv) {
             seenoptional = 1;
         }
 
-        else {
+        else if(strcompare(*copyargv, "-i") == 0 ||
+            strcompare(*copyargv, "-o") == 0) {
             if(seenoptional == 1) {
-                printf("%s\n", "bad");
                 return -1;
             }
         }
-
+        copyargv++;
     }
 
     // check -h flag
@@ -113,6 +130,11 @@ int validargs(int argc, char **argv) {
         return 0;
     }
 
+    // check if number of arguments are valid
+    if(argc <= 1 || argc > 8) {
+        return -1;
+    }
+
     // check -i flag
     int foundi = 0;
     copyargv = argv;
@@ -123,9 +145,14 @@ int validargs(int argc, char **argv) {
             // -i found
             foundi = 1;
             copyargv++;
+
+            // nothing is provided after -i
+            if(i == argc - 1) return -1;
+
             token = *copyargv;
             if(strcompare(token, "birp") == 0) {
                 // set global option 0x2
+                isinputbirp = 1;
                 int bit = 2;
                 global_options = global_options | bit;
                 break;
@@ -148,6 +175,7 @@ int validargs(int argc, char **argv) {
     if(foundi == 0) {
         int bit = 2;
         global_options = global_options | bit;
+        isinputbirp = 1;
     }
 
     // check -o flag
@@ -159,9 +187,14 @@ int validargs(int argc, char **argv) {
             // -o found
             foundo = 1;
             copyargv++;
+
+            // nothing is provided after -o
+            if(i == argc - 1) return -1;
+
             token = *copyargv;
             if(strcompare(token, "birp") == 0) {
                 // set global option 0x2
+                isoutputbirp = 1;
                 int bit = 2;
                 bit = bit << 4;
                 global_options = global_options | bit;
@@ -189,14 +222,115 @@ int validargs(int argc, char **argv) {
         }
         copyargv++;
     }
+
     // if -i is not provided, enter birp
     if(foundo == 0) {
+        isoutputbirp = 1;
         int bit = 2;
         bit = bit << 4;
         global_options = global_options | bit;
 
     }
-printf("%04x\n", global_options);
 
-    return -1;
+printf("%04x\n", global_options);
+    copyargv = argv;
+    int foundoptional = 0;
+    for(int i = 0; i < argc; i++) {
+        char *currentcopy = *copyargv;
+        if(isinputbirp == 1 && isoutputbirp == 1) {
+            if(strcompare(currentcopy, "-n") == 0) {
+                // manage -n tag
+                // store 0x1 in global_options
+                if(foundoptional == 1) return -1;
+                int bit = 1;
+                bit = bit << 8;
+                global_options = global_options | bit;
+                foundoptional = 1;
+            }
+            else if(strcompare(currentcopy, "-r") == 0) {
+                // handle -r tag
+                // set 0x4 in global_options
+                if(foundoptional == 1) return -1;
+                int bit = 4;
+                bit = bit << 8;
+                global_options = global_options | bit;
+                foundoptional = 1;
+            }
+            else if(strcompare(currentcopy, "-t") == 0) {
+                // handle -t tag
+                // set 0x2
+                if(foundoptional == 1) return -1;
+                int bit = 2;
+                bit = bit << 8;
+                global_options = global_options | bit;
+                // get threshold param
+                char *nextcopy = *(copyargv + 1);
+                int threshold = convertstrtoint(nextcopy);
+                if(threshold < 0 || threshold > 255) {
+                    return -1;
+                }
+                bit = threshold;
+                bit = bit << 16;
+                global_options = global_options | bit;
+                foundoptional = 1;
+
+            }
+            else if(strcompare(currentcopy, "-Z") == 0) {
+                // handle -Z tag
+                // set 0x3
+                int bit = 3;
+                bit = bit << 8;
+                global_options = global_options | bit;
+                // get factor param
+                char *nextcopy = *(copyargv + 1);
+                int factor = convertstrtoint(nextcopy);
+                if(factor < 0 || factor > 16) {
+                    return -1;
+                }
+                bit = factor;
+                bit = bit << 16;
+                global_options = global_options | bit;
+                foundoptional = 1;
+            }
+            else if(strcompare(currentcopy, "-z") == 0) {
+                // handle -Z tag
+                // set 0x3
+                if(foundoptional == 1) return -1;
+                int bit = 3;
+                bit = bit << 8;
+                global_options = global_options | bit;
+                printf("%04x\n", global_options);
+
+                // get factor param
+                char *nextcopy = *(copyargv + 1);
+                int factor = convertstrtoint(nextcopy);
+                if(factor < 0 || factor > 16) {
+                    return -1;
+                }
+                bit = factor;
+                // flip all bits
+                int flipper = 0xff;
+                bit = bit ^ flipper;
+                // add 1
+                bit++;
+                bit = bit << 16;
+                global_options = global_options | bit;
+                foundoptional = 1;
+
+            }
+        }
+        else {
+            if(strcompare(currentcopy, "-n") == 0 ||
+                strcompare(currentcopy, "-r") == 0 ||
+                strcompare(currentcopy, "-z") == 0 ||
+                strcompare(currentcopy, "-Z") == 0 ||
+                strcompare(currentcopy, "-t") == 0) {
+                return -1;
+            }
+        }
+        copyargv++;
+    }
+
+printf("%04x\n", global_options);
+    return 0;
 }
