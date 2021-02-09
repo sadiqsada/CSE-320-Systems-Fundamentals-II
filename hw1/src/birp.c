@@ -24,7 +24,36 @@ int birp_to_birp(FILE *in, FILE *out) {
 
 int pgm_to_ascii(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
-    return -1;
+    int wp = 0, hp = 0;
+    size_t size = RASTER_SIZE_MAX;
+    int result = img_read_pgm(in, &wp, &hp, raster_data, size);
+
+    if(result == 0) {
+        for(int i = 0; i < hp; i++) {
+            for(int j = 0; j < wp; j++) {
+                int val = *(raster_data + (i * wp) + j);
+                if(val >= 0 && val <= 63) {
+                    printf("%c", ' ');
+                }
+                else if(val >= 64 && val <= 127) {
+                    printf("%c", '.');
+                }
+                else if(val >= 128 && val <= 191) {
+                    printf("%c", '*');
+                }
+                else if(val >= 192 && val <= 255) {
+                    printf("%c", '@');
+                }
+            }
+
+            printf("%c", '\n');
+        }
+    }
+
+    else {
+        return -1;
+    }
+
 }
 
 int birp_to_ascii(FILE *in, FILE *out) {
@@ -232,7 +261,6 @@ int validargs(int argc, char **argv) {
 
     }
 
-printf("%04x\n", global_options);
     copyargv = argv;
     int foundoptional = 0;
     for(int i = 0; i < argc; i++) {
@@ -331,6 +359,5 @@ printf("%04x\n", global_options);
         copyargv++;
     }
 
-printf("%04x\n", global_options);
     return 0;
 }

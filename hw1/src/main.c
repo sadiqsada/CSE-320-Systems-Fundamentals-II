@@ -23,6 +23,7 @@ int main(int argc, char **argv)
     if(global_options & HELP_OPTION)
         USAGE(*argv, EXIT_SUCCESS);
     // TO BE IMPLEMENTED
+    pgm_to_ascii(stdin, stdout);
     return EXIT_FAILURE;
 }
 
