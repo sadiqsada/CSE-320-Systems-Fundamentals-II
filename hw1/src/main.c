@@ -18,12 +18,14 @@
 
 int main(int argc, char **argv)
 {
+	printf("%d\n", bdd_lookup(1,2,4));
+	printf("%d\n", bdd_lookup(1,2,3));
+	printf("%d\n", bdd_lookup(1,2,4));
     if(validargs(argc, argv))
         USAGE(*argv, EXIT_FAILURE);
     if(global_options & HELP_OPTION)
         USAGE(*argv, EXIT_SUCCESS);
     // TO BE IMPLEMENTED
-    pgm_to_ascii(stdin, stdout);
     return EXIT_FAILURE;
 }
 

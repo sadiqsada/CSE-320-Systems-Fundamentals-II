@@ -50,9 +50,7 @@ int pgm_to_ascii(FILE *in, FILE *out) {
         }
     }
 
-    else {
-        return -1;
-    }
+    return -1;
 
 }
 
