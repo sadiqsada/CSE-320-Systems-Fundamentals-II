@@ -44,8 +44,8 @@ int bdd_lookup(int level, int left, int right) {
     BDD_NODE *key = *(bdd_hash_map + hashcode + iter);
 
     while(key != NULL) {
-        int advanceKey = (hashcode + iter) % BDD_HASH_SIZE;
-        key = *(bdd_hash_map + advanceKey);
+        int advancekey = (hashcode + iter) % BDD_HASH_SIZE;
+        key = *(bdd_hash_map + advancekey);
         // compare if this node and the input node are the same
         int nodelevel = (int)((key->level) - '0');
         int nodeleftval = key -> left;
@@ -53,7 +53,12 @@ int bdd_lookup(int level, int left, int right) {
 
         // compare with input arguments
         if(nodelevel == level && nodeleftval == left && noderightval == right) {
-            return advanceKey;
+            for(int i = BDD_NUM_LEAVES; i < BDD_NUM_LEAVES + bdd_node_size; i++) {
+                BDD_NODE *thisnode = (bdd_nodes + i);
+                if((int)((thisnode -> level) - '0') == level && thisnode -> left == left && thisnode -> right == right) {
+                    return i;
+                }
+            }
         }
 
         else {
@@ -72,25 +77,86 @@ int bdd_lookup(int level, int left, int right) {
 
     // if hashmap doesn't contain the node, insert into hashmap
     iter = 0;
-    int advanceKey = (hashcode + iter) % BDD_HASH_SIZE;
-    key = *(bdd_hash_map + advanceKey);
+    int advancekey = (hashcode + iter) % BDD_HASH_SIZE;
+    key = *(bdd_hash_map + advancekey);
 
     while(key != NULL) {
         iter++;
-        advanceKey = (hashcode + iter) % BDD_HASH_SIZE;
-        key = *(bdd_hash_map + advanceKey);
+        advancekey = (hashcode + iter) % BDD_HASH_SIZE;
+        key = *(bdd_hash_map + advancekey);
     }
 
     // insert node pointer into hashmap
-    *(bdd_hash_map + advanceKey) = newnode;
+    *(bdd_hash_map + advancekey) = newnode;
 
     return bdd_node_size + BDD_NUM_LEAVES - 1;
     // level is zero, negative was handled before
 }
 
+int get_square_d(int w, int h) {
+    int pow = 2;
+    int d = 1;
+    int maxwh = w > h ? w : h;
+    if(maxwh == 1) return 0;
+    if(maxwh == 2) return 1;
+    while(pow * pow <= maxwh) {
+        pow *= 2;
+        d++;
+    }
+    return ++d;
+}
+
+int count = BDD_NUM_LEAVES;
+
+BDD_NODE *from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int k, int count) {
+    if(level == 0 && (loww == highw && lowh == highh)) {
+        // handle base case
+        unsigned char c = *(raster + (level * highh) + loww);
+        int val = (int)c;
+        //
+        if(val == 0) {
+            return NULL;
+        }
+        return bdd_nodes + val;
+    }
+
+    int newnodeleftindex = 2 * count + 1;
+    int newnoderightindex = 2 * count + 2;
+    int newnodeindex = bdd_lookup(level, newnodeleftindex, newnoderightindex);
+
+    int leftleftindex = 2 * newnodeleftindex + 1;
+    int leftrightindex = 2 * newnodeleftindex + 2;
+    int leftnodeindex = bdd_lookup(level - 1, leftleftindex, leftrightindex);
+
+    int rightleftindex = 2 * newnoderightindex + 1;
+    int rightrightindex = 2 * newnoderightindex + 2;
+    int rightnodeindex = bdd_lookup(level - 1, rightleftindex, rightrightindex);
+
+    BDD_NODE *newnode = bdd_nodes + newnodeindex;
+    BDD_NODE *leftnode = bdd_nodes + leftnodeindex;
+    BDD_NODE *rightnode = bdd_nodes + rightnodeindex;
+
+    if(k % 2 == 0) {
+        leftnode = from_raster_helper(level - 1, loww, lowh, highw, highh / 2, raster, k + 1, 2 * count + 1);
+        rightnode = from_raster_helper(level - 1, loww, highh / 2, highw, highh, raster, k + 1, 2 * count + 2);
+    }
+
+    else {
+        leftnode = from_raster_helper(level - 1, loww, lowh, highw / 2, highh, raster, k + 1, 2 * count + 1);
+        rightnode = from_raster_helper(level - 1, highw / 2, lowh, highw, highh, raster, k + 1, 2 * count + 2);
+
+    }
+    return newnode;
+
+}
+
 BDD_NODE *bdd_from_raster(int w, int h, unsigned char *raster) {
     // TO BE IMPLEMENTED
-    return NULL;
+    // find highest d such that 2^d <= max(w,h)
+    int d = get_square_d(w, h);
+    if(d > 8192) return NULL;
+
+    return from_raster_helper(2 * d, 0, 0, d, d, raster, 0, 0);
 }
 
 void bdd_to_raster(BDD_NODE *node, int w, int h, unsigned char *raster) {
