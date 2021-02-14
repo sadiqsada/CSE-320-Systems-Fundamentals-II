@@ -103,48 +103,36 @@ int get_square_d(int w, int h) {
         pow *= 2;
         d++;
     }
-    return ++d;
+    return (pow == maxwh) ? d : ++d;
 }
 
 int count = BDD_NUM_LEAVES;
 
 BDD_NODE *from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int k, int count) {
-    if(level == 0 && (loww == highw && lowh == highh)) {
+    if(level == 0) {
         // handle base case
         unsigned char c = *(raster + (level * highh) + loww);
         int val = (int)c;
-        //
+
         if(val == 0) {
             return NULL;
         }
         return bdd_nodes + val;
-    }
-    BDD_NODE *leftnode = NULL, *rightnode = NULL;
-
-    if(k % 2 == 0) {
-        leftnode = from_raster_helper(level - 1, loww, lowh, highw, highh / 2, raster, k + 1, 2 * count + 1);
-        rightnode = from_raster_helper(level - 1, loww, highh / 2, highw, highh, raster, k + 1, 2 * count + 2);
-    }
-
-    else {
-        leftnode = from_raster_helper(level - 1, loww, lowh, highw / 2, highh, raster, k + 1, 2 * count + 1);
-        rightnode = from_raster_helper(level - 1, highw / 2, lowh, highw, highh, raster, k + 1, 2 * count + 2);
     }
 
     int newnodeleftindex = 2 * count + 1;
     int newnoderightindex = 2 * count + 2;
     int newnodeindex = bdd_lookup(level, newnodeleftindex, newnoderightindex);
 
-    int leftleftindex = 2 * newnodeleftindex + 1;
-    int leftrightindex = 2 * newnodeleftindex + 2;
-    // construct leftnode
-    bdd_lookup(level - 1, leftleftindex, leftrightindex);
+    if(k % 2 == 0) {
+        from_raster_helper(level - 1, loww, lowh, highw, highh / 2, raster, k + 1, 2 * count + 1);
+        from_raster_helper(level - 1, loww, highh / 2, highw, highh, raster, k + 1, 2 * count + 2);
+    }
 
-    int rightleftindex = 2 * newnoderightindex + 1;
-    int rightrightindex = 2 * newnoderightindex + 2;
-    // construct rightnode
-    bdd_lookup(level - 1, rightleftindex, rightrightindex);
-
+    else {
+        from_raster_helper(level - 1, loww, lowh, highw / 2, highh, raster, k + 1, 2 * count + 1);
+        from_raster_helper(level - 1, highw / 2, lowh, highw, highh, raster, k + 1, 2 * count + 2);
+    }
 
     return bdd_nodes + newnodeindex;
 
@@ -155,8 +143,11 @@ BDD_NODE *bdd_from_raster(int w, int h, unsigned char *raster) {
     // find highest d such that 2^d <= max(w,h)
     int d = get_square_d(w, h);
     if(d > 8192) return NULL;
-
-    return from_raster_helper(2 * d, 0, 0, d, d, raster, 0, 0);
+    int pow = 2;
+    for(int i = 0; i < d; i++) {
+        pow *= 2;
+    }
+    return from_raster_helper(2 * d, 0, 0, pow, pow, raster, 0, 0);
 }
 
 void bdd_to_raster(BDD_NODE *node, int w, int h, unsigned char *raster) {
@@ -199,8 +190,8 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
 }
 
 int bdd_serialize(BDD_NODE *node, FILE *out) {
-    int nodeindex = bdd_lookup((int)(node -> level), node->left, node->right);
-    serializehelper(node, nodeindex, out);
+    int nodeindex = bdd_lookup((int)((node -> level) - '0'), node->left, node->right);
+    return serializehelper(node, nodeindex, out);
 }
 
 BDD_NODE *bdd_deserialize(FILE *in) {

@@ -13,7 +13,13 @@ int pgm_to_birp(FILE *in, FILE *out) {
     size_t size = RASTER_SIZE_MAX;
     int result = img_read_pgm(in, &wp, &hp, raster_data, size);
 
-
+    if(result == 0) {
+        BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
+        int serializedresult = bdd_serialize(node, out);
+        // if(serializedresult == 0) {
+        //     return 0;
+        // }
+    }
     return -1;
 }
 
@@ -330,7 +336,6 @@ int validargs(int argc, char **argv) {
                 int bit = 3;
                 bit = bit << 8;
                 global_options = global_options | bit;
-                printf("%04x\n", global_options);
 
                 // get factor param
                 char *nextcopy = *(copyargv + 1);
