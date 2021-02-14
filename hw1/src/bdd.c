@@ -119,22 +119,7 @@ BDD_NODE *from_raster_helper(int level, int loww, int lowh, int highw, int highh
         }
         return bdd_nodes + val;
     }
-
-    int newnodeleftindex = 2 * count + 1;
-    int newnoderightindex = 2 * count + 2;
-    int newnodeindex = bdd_lookup(level, newnodeleftindex, newnoderightindex);
-
-    int leftleftindex = 2 * newnodeleftindex + 1;
-    int leftrightindex = 2 * newnodeleftindex + 2;
-    int leftnodeindex = bdd_lookup(level - 1, leftleftindex, leftrightindex);
-
-    int rightleftindex = 2 * newnoderightindex + 1;
-    int rightrightindex = 2 * newnoderightindex + 2;
-    int rightnodeindex = bdd_lookup(level - 1, rightleftindex, rightrightindex);
-
-    BDD_NODE *newnode = bdd_nodes + newnodeindex;
-    BDD_NODE *leftnode = bdd_nodes + leftnodeindex;
-    BDD_NODE *rightnode = bdd_nodes + rightnodeindex;
+    BDD_NODE *leftnode = NULL, *rightnode = NULL;
 
     if(k % 2 == 0) {
         leftnode = from_raster_helper(level - 1, loww, lowh, highw, highh / 2, raster, k + 1, 2 * count + 1);
@@ -144,9 +129,24 @@ BDD_NODE *from_raster_helper(int level, int loww, int lowh, int highw, int highh
     else {
         leftnode = from_raster_helper(level - 1, loww, lowh, highw / 2, highh, raster, k + 1, 2 * count + 1);
         rightnode = from_raster_helper(level - 1, highw / 2, lowh, highw, highh, raster, k + 1, 2 * count + 2);
-
     }
-    return newnode;
+
+    int newnodeleftindex = 2 * count + 1;
+    int newnoderightindex = 2 * count + 2;
+    int newnodeindex = bdd_lookup(level, newnodeleftindex, newnoderightindex);
+
+    int leftleftindex = 2 * newnodeleftindex + 1;
+    int leftrightindex = 2 * newnodeleftindex + 2;
+    // construct leftnode
+    bdd_lookup(level - 1, leftleftindex, leftrightindex);
+
+    int rightleftindex = 2 * newnoderightindex + 1;
+    int rightrightindex = 2 * newnoderightindex + 2;
+    // construct rightnode
+    bdd_lookup(level - 1, rightleftindex, rightrightindex);
+
+
+    return bdd_nodes + newnodeindex;
 
 }
 
@@ -163,13 +163,49 @@ void bdd_to_raster(BDD_NODE *node, int w, int h, unsigned char *raster) {
     // TO BE IMPLEMENTED
 }
 
+int nodecount = 1;
+int serializehelper(BDD_NODE *node, int index, FILE *out) {
+    // post-order traversal
+    // serialize left, right
+    int nodelevel = (int)((node -> level) - '0');
+    if(nodelevel != 0) serializehelper(bdd_nodes + node->left, node->left, out);
+    if(nodelevel != 0) serializehelper(bdd_nodes + node->right, node->right, out);
+
+    // process root
+    // level is zero
+    if(nodelevel == 0) {
+        fputc('@', out);
+        // convert int to char because i have to print 1 byte
+        char c = (char)(index);
+        fputc(c, out);
+        *(bdd_index_map + index) = nodecount++;
+        return 0;
+    }
+    // level is greater than zero
+    else if (nodelevel > 0) {
+        // convert level int to char level
+        char clevel = (char)('@' + nodelevel);
+        fputc(clevel, out);
+        *(bdd_index_map + node->left) = nodecount++;
+        *(bdd_index_map + node->right) = nodecount++;
+        int leftindex = nodecount - 2;
+        int rightindex = nodecount - 1;
+        fprintf(out, "%d", leftindex);
+        fprintf(out, "%d", rightindex);
+        return 0;
+    }
+
+    return 0;
+}
+
 int bdd_serialize(BDD_NODE *node, FILE *out) {
-    // TO BE IMPLEMENTED
-    return -1;
+    int nodeindex = bdd_lookup((int)(node -> level), node->left, node->right);
+    serializehelper(node, nodeindex, out);
 }
 
 BDD_NODE *bdd_deserialize(FILE *in) {
     // TO BE IMPLEMENTED
+
     return NULL;
 }
 

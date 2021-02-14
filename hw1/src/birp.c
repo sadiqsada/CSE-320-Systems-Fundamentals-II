@@ -9,6 +9,11 @@
 
 int pgm_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
+    int wp = 0, hp = 0;
+    size_t size = RASTER_SIZE_MAX;
+    int result = img_read_pgm(in, &wp, &hp, raster_data, size);
+
+
     return -1;
 }
 
