@@ -7,6 +7,20 @@
 #include "const.h"
 #include "debug.h"
 
+void dfs(BDD_NODE *node) {
+    int val = (int)((node->level) - '0');
+    if(val == 0) return;
+    printf("%d\n", val);
+    // if(val == 1) {
+    //     dfs(bdd_nodes + node->left, k++);
+    //     dfs(bdd_nodes + node->right, k++);
+    // }
+    if(val > 1) {
+        dfs(bdd_nodes + BDD_NUM_LEAVES + node->left);
+        dfs(bdd_nodes + BDD_NUM_LEAVES + node->right);
+    }
+}
+
 int pgm_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
     int wp = 0, hp = 0;
@@ -15,7 +29,11 @@ int pgm_to_birp(FILE *in, FILE *out) {
 
     if(result == 0) {
         BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
-        int serializedresult = bdd_serialize(node, out);
+        dfs(node);
+        // int val = (int)((node->level) - '0');
+        // printf("%d %d %d\n", val, node->left, node->right);
+        // dfs(node, 0);
+        // int serializedresult = bdd_serialize(node, out);
         // if(serializedresult == 0) {
         //     return 0;
         // }
