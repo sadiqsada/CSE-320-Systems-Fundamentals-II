@@ -9,7 +9,7 @@
 
 void dfs(BDD_NODE *node) {
     int val = (int)((node->level) - '0');
-    if(val == 0) return;
+    if(val < 0) return;
     printf("%d\n", val);
     // if(val == 1) {
     //     dfs(bdd_nodes + node->left, k++);
@@ -29,7 +29,7 @@ int pgm_to_birp(FILE *in, FILE *out) {
 
     if(result == 0) {
         BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
-        dfs(node);
+        // dfs(node);
         // int val = (int)((node->level) - '0');
         // printf("%d %d %d\n", val, node->left, node->right);
         // dfs(node, 0);
