@@ -35,36 +35,28 @@ int bdd_lookup(int level, int left, int right) {
 
     if(left == right) return left;
 
-
     int hashcode = hash(level, left, right);
 
     int iter = 0;
 
     // if hashmap contains the node already
-    // BDD_NODE *key = *(bdd_hash_map + hashcode + iter);
+    BDD_NODE *key = *(bdd_hash_map + hashcode + iter);
 
-    // while(key != NULL) {
-    //     int advancekey = (hashcode + iter) % BDD_HASH_SIZE;
-    //     key = *(bdd_hash_map + advancekey);
-    //     // compare if this node and the input node are the same
-    //     int nodelevel = (int)((key->level) - '0');
-    //     int nodeleftval = key -> left;
-    //     int noderightval = key -> right;
+    while(key != NULL) {
+        // compare if this node and the input node are the same
+        int nodelevel = (int)((key->level) - '0');
+        int nodeleftval = key -> left;
+        int noderightval = key -> right;
 
-    //     // compare with input arguments
-    //     if(nodelevel == level && nodeleftval == left && noderightval == right) {
-    //         for(int i = BDD_NUM_LEAVES; i < BDD_NUM_LEAVES + bdd_node_size; i++) {
-    //             BDD_NODE *thisnode = (bdd_nodes + i);
-    //             if((int)((thisnode -> level) - '0') == level && thisnode -> left == left && thisnode -> right == right) {
-    //                 return i;
-    //             }
-    //         }
-    //     }
+        if(nodelevel == level && nodeleftval == left && noderightval == right) {
+            return key - bdd_nodes;
+        }
 
-    //     else {
-    //         iter++;
-    //     }
-    // }
+        iter++;
+
+        int advancekey = (hashcode + iter) % BDD_HASH_SIZE;
+        key = *(bdd_hash_map + advancekey);
+    }
 
     // node about to be inserted is not a leaf
     BDD_NODE *newnode = bdd_nodes + (256 + bdd_node_size);
@@ -78,7 +70,7 @@ int bdd_lookup(int level, int left, int right) {
     // if hashmap doesn't contain the node, insert into hashmap
     iter = 0;
     int advancekey = (hashcode + iter) % BDD_HASH_SIZE;
-    BDD_NODE *key = *(bdd_hash_map + advancekey);
+    key = *(bdd_hash_map + advancekey);
 
     while(key != NULL) {
         iter++;
@@ -90,7 +82,6 @@ int bdd_lookup(int level, int left, int right) {
     *(bdd_hash_map + advancekey) = newnode;
 
     return bdd_node_size + BDD_NUM_LEAVES - 1;
-    // level is zero, negative was handled before
 }
 
 int get_square_d(int w, int h) {
@@ -104,47 +95,6 @@ int get_square_d(int w, int h) {
     }
     return d;
 }
-
-// int rowhelper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int pow, int w, int h);
-
-// int columnhelper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int pow, int w, int h) {
-//     // if(level == 1) {
-//     //     int leftnodeindex = (w * lowh) + loww;
-//     //     int rightnodeindex = (w * lowh) + highw;
-//     //     return bdd_lookup(level, leftnodeindex, rightnodeindex);
-//     // }
-
-//     int left = rowhelper(level - 1, loww, lowh, (loww + highw) / 2, highh, raster, pow, w, h);
-//     int right = rowhelper(level - 1, ((loww + highw) / 2) + 1, lowh, highw, highh, raster, pow, w, h);
-//     printf("%d %d %d\n", level, left, right);
-//     // return bdd_lookup(level, left, right);
-//     // return bdd_lookup(level, left, right);
-//     return 0;
-
-// }
-
-
-// int rowhelper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int pow, int w, int h) {
-//     if(level == 0) {
-//         // handle base case
-//         if(highh >= h || highw >= w) {
-//             return 0;
-//         }
-//         unsigned char c = *(raster + (pow * lowh) + loww);
-//         int val = (int)c;
-
-//         printf("%d %d %d %d %d\n", loww, highw, lowh, highh);
-
-//         return val;
-//     }
-
-//     int left = columnhelper(level - 1, loww, lowh, highw, (lowh + highh) / 2, raster, pow, w, h);
-//     int right = columnhelper(level - 1, loww, ((lowh + highh) / 2) + 1, highw, highh, raster, pow, w, h);
-//     printf("%d %d %d\n", level, left, right);
-//     return 0;
-//     // return bdd_lookup(level, left, right);
-//     // return bdd_lookup(level, left, right);
-// }
 
 int left = 0, right = 0;
 int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int k, int pow, int w, int h) {
@@ -171,10 +121,7 @@ int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsi
         right = from_raster_helper(level - 1, ((loww + highw) / 2) + 1, lowh, highw, highh, raster, k + 1, pow, w, h);
     }
 
-    // printf("%d %d %d\n", level, left, right);
-    printf("%d %d %d\n", level, left, right);
     return bdd_lookup(level, left, right);
-    // return (left + right) / 2;
 
 }
 
@@ -188,9 +135,8 @@ BDD_NODE *bdd_from_raster(int w, int h, unsigned char *raster) {
         pow *= 2;
     }
     printf("pow: %d, w: %d, h: %d\n", pow, w, h);
-    int ind = from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, 0, pow, w - 1, h - 1);
-    return bdd_nodes + ind;
-    // return bdd_nodes + from_raster_helper(2 * d + 2, 0, 0, pow - 1, pow - 1, raster, 0, pow);
+    int index = from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, 0, pow, w, h);
+    return bdd_nodes + BDD_NUM_LEAVES + index;
 }
 
 void bdd_to_raster(BDD_NODE *node, int w, int h, unsigned char *raster) {
@@ -203,23 +149,6 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
     // serialize left, right
 
     int nodelevel = (int)((node -> level) - '0');
-    if(nodelevel == 1) return 0;
-    printf("%d\n", nodelevel);
-    serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->left, BDD_NUM_LEAVES + node->left, out);
-    serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->right, BDD_NUM_LEAVES + node->right, out);
-
-    return 0;
-    // if(nodelevel == 1) {
-    //     serializehelper(bdd_nodes + node->left, node->left, out);
-    //     serializehelper(bdd_nodes + node->right, node->right, out);
-    // }
-    // else if(nodelevel > 1) {
-    //     serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->left, BDD_NUM_LEAVES + node->left, out);
-    //     serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->right, BDD_NUM_LEAVES + node->right, out);
-    // }
-
-    // process root
-    // level is zero
     if(nodelevel == 0) {
         fputc('@', out);
         // convert int to char because i have to print 1 byte
@@ -228,8 +157,18 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
         *(bdd_index_map + index) = nodecount++;
         return 0;
     }
-    // level is greater than zero
-    else if (nodelevel > 0) {
+
+    // return 0;
+    if(nodelevel == 1) {
+        serializehelper(bdd_nodes + node->left, node->left, out);
+        serializehelper(bdd_nodes + node->right, node->right, out);
+    }
+    else if(nodelevel > 1) {
+        serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->left, BDD_NUM_LEAVES + node->left, out);
+        serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->right, BDD_NUM_LEAVES + node->right, out);
+    }
+
+    if (nodelevel > 0) {
         // convert level int to char level
         char clevel = (char)('@' + nodelevel);
         fputc(clevel, out);
@@ -247,10 +186,8 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
 
 int bdd_serialize(BDD_NODE *node, FILE *out) {
     int nodeindex = bdd_lookup((int)((node -> level) - '0'), node->left, node->right);
-
-    // printf("%d %d %d\n", (int)((node -> level) - '0'), node->level, node->right);
     return serializehelper(node, nodeindex, out);
-    }
+}
 
 BDD_NODE *bdd_deserialize(FILE *in) {
     // TO BE IMPLEMENTED
