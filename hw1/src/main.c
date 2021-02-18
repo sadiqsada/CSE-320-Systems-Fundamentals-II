@@ -20,12 +20,6 @@
 
 int main(int argc, char **argv)
 {
-	// printf("%d\n", bdd_lookup(1,3,5));
-	// printf("%d\n", bdd_lookup(1,4,5));
-	// printf("%d\n", bdd_lookup(1,5,5));
-	// printf("%d\n", bdd_lookup(1,3,5));
- //    printf("%d\n", bdd_lookup(1,4,5));
-
 	pgm_to_birp(stdin, stdout);
     if(validargs(argc, argv))
         USAGE(*argv, EXIT_FAILURE);

@@ -15,12 +15,12 @@ int pgm_to_birp(FILE *in, FILE *out) {
 
     if(result == 0) {
         BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
-        printf("%c %d %d\n", node-> level, node->left, node-> right);
+        // printf("%c %d %d\n", node-> level, node->left, node-> right);
         // dfs(node);
         // int val = (int)((node->level) - '0');
         // printf("%d %d %d\n", val, node->left, node->right);
         // dfs(node, 0);
-        int serializedresult = bdd_serialize(node, out);
+        // int serializedresult = bdd_serialize(node, out);
         // if(serializedresult == 0) {
         //     return 0;
         // }

@@ -18,6 +18,8 @@
 
 int bdd_node_size = 0;
 
+// int left = 0, right = 0;
+
 int hash(int level, int left, int right) {
     return (level + left + right) % BDD_HASH_SIZE;
 }
@@ -31,7 +33,7 @@ int hash(int level, int left, int right) {
  */
 int bdd_lookup(int level, int left, int right) {
     // TO BE IMPLEMENTED
-    if(left < 0 || right < 0 || left >= BDD_NODES_MAX || right >= BDD_NODES_MAX || level < 0 || level >= BDD_LEVELS_MAX) return -1;
+    // if(left < 0 || right < 0 || left >= BDD_NODES_MAX || right >= BDD_NODES_MAX || level < 0 || level >= BDD_LEVELS_MAX) return -1;
 
     if(left == right) return left;
 
@@ -60,12 +62,12 @@ int bdd_lookup(int level, int left, int right) {
 
     // node about to be inserted is not a leaf
     BDD_NODE *newnode = bdd_nodes + (256 + bdd_node_size);
-    if(level > 0) {
-        newnode -> level = (char)(level + '0');
-        newnode -> left = left;
-        newnode -> right = right;
-        bdd_node_size++;
-    }
+
+    newnode -> level = (char)(level + '0');
+    newnode -> left = left;
+    newnode -> right = right;
+    bdd_node_size++;
+
 
     // if hashmap doesn't contain the node, insert into hashmap
     iter = 0;
@@ -93,35 +95,38 @@ int get_square_d(int w, int h) {
         d++;
         pow *= 2;
     }
-    return d;
+    return (pow == maxwh)? d : ++d;
 }
 
-int left = 0, right = 0;
-int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int k, int pow, int w, int h) {
+int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int pow, int w, int h, int left, int right) {
+    if(loww >= w || lowh >= h || highh >= h || highw >= w) {
+        return 0;
+    }
+
     if(level == 0) {
         // handle base case
         unsigned char c = *(raster + (pow * lowh) + loww);
+        // printf("%d %d %d %d\n", loww, lowh, highw, highh);
         int val = (int)c;
-
-        // printf("%d %d %d %d %d\n", loww, highw, lowh, highh, val);
-
-        if(highh >= h || highw >= w) {
-            return 0;
-        }
         return val;
     }
 
-    if(k % 2 == 0) {
-        left = from_raster_helper(level - 1, loww, lowh, highw, (lowh + highh) / 2, raster, k + 1, pow, w, h);
-        right = from_raster_helper(level - 1, loww, ((lowh + highh) / 2) + 1, highw, highh, raster, k + 1, pow, w, h);
+    if(level % 2 == 0) {
+        left = from_raster_helper(level - 1, loww, lowh, highw, (lowh + highh) / 2, raster, pow, w, h, left, right);
+        right = from_raster_helper(level - 1, loww, ((lowh + highh) / 2) + 1, highw, highh, raster, pow, w, h, left, right);
     }
 
     else {
-        left = from_raster_helper(level - 1, loww, lowh, (loww + highw) / 2, highh, raster, k + 1, pow, w, h);
-        right = from_raster_helper(level - 1, ((loww + highw) / 2) + 1, lowh, highw, highh, raster, k + 1, pow, w, h);
+        left = from_raster_helper(level - 1, loww, lowh, (loww + highw) / 2, highh, raster, pow, w, h, left, right);
+        right = from_raster_helper(level - 1, ((loww + highw) / 2) + 1, lowh, highw, highh, raster, pow, w, h, left, right);
     }
 
-    return bdd_lookup(level, left, right);
+    // printf("%d %d %d %d %d\n", level, loww, highw, lowh, highh);
+
+    int ind = bdd_lookup(level, left, right);
+
+    printf("%d %d %d %d\n", level, left, right, ind);
+    return ind;
 
 }
 
@@ -129,13 +134,14 @@ BDD_NODE *bdd_from_raster(int w, int h, unsigned char *raster) {
     // TO BE IMPLEMENTED
     // find highest d such that 2^d <= max(w,h)
     int d = get_square_d(w, h);
-    printf("%d\n", d);
     int pow = 1;
     for(int i = 0; i < d; i++) {
         pow *= 2;
     }
-    printf("pow: %d, w: %d, h: %d\n", pow, w, h);
-    int index = from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, 0, pow, w, h);
+    // from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, 0, pow, w, h);
+
+    printf("pow: %d, w: %d, h: %d d:%d\n", pow, w, h, d);
+    int index = from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, pow, w, h, 0, 0);
     return bdd_nodes + BDD_NUM_LEAVES + index;
 }
 
