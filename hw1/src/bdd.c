@@ -105,9 +105,7 @@ int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsi
 
     if(level == 0) {
         // handle base case
-        printf("%d %d %d %d\n", loww, lowh, highw, highh);
         unsigned char c = *(raster + (pow * lowh) + loww);
-
         int val = (int)(c);
         return val;
     }
@@ -122,7 +120,6 @@ int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsi
         right = from_raster_helper(level - 1, ((loww + highw) / 2) + 1, lowh, highw, highh, raster, pow, w, h, left, right);
     }
 
-
     int ind = bdd_lookup(level, left, right);
     return ind;
 
@@ -136,62 +133,128 @@ BDD_NODE *bdd_from_raster(int w, int h, unsigned char *raster) {
     for(int i = 0; i < d; i++) {
         pow *= 2;
     }
-    // from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, 0, pow, w, h);
-
-    printf("pow: %d, w: %d, h: %d, d: %d\n", pow, w, h, d);
     int index = from_raster_helper(2 * d, 0, 0, pow - 1,  pow - 1, raster, pow, w, h, 0, 0);
-    printf("bdd_node index: %d\n", index);
-    return bdd_nodes + BDD_NUM_LEAVES + index;
+    return bdd_nodes + index;
 }
 
 void bdd_to_raster(BDD_NODE *node, int w, int h, unsigned char *raster) {
     // TO BE IMPLEMENTED
 }
 
+void serialize_bit_convert(int num, FILE *out) {
+    int firstbyte = num << 24;
+    firstbyte = firstbyte >> 24;
+
+    int secondbyte = num << 16;
+    secondbyte = secondbyte >> 24;
+
+    int thirdbyte = num << 8;
+    thirdbyte = thirdbyte >> 24;
+
+    int fourthbyte = num >> 24;
+
+    char firstchar = (char)(firstbyte);
+    char secondchar = (char)(secondbyte);
+    char thirdchar = (char)(thirdbyte);
+    char fourthchar = (char)(fourthbyte);
+
+    fputc(firstchar, out);
+    fputc(secondchar, out);
+    fputc(thirdchar, out);
+    fputc(fourthchar, out);
+
+}
+int leftindex = 0, rightindex = 0;
 int nodecount = 1;
 int serializehelper(BDD_NODE *node, int index, FILE *out) {
     // post-order traversal
     // serialize left, right
-
-    int nodelevel = (int)((node -> level) - '0');
-    if(nodelevel == 0) {
+    if(node->level == 0) {
         fputc('@', out);
-        // convert int to char because i have to print 1 byte
         char c = (char)(index);
         fputc(c, out);
-        *(bdd_index_map + index) = nodecount++;
+        if(*(bdd_index_map + index) == 0) {
+            *(bdd_index_map + index) = nodecount++;
+        }
         return 0;
     }
 
-    // return 0;
-    if(nodelevel == 1) {
+    if(*(bdd_index_map + node->left) == 0) {
         serializehelper(bdd_nodes + node->left, node->left, out);
+    }
+    if(*(bdd_index_map + node->right) == 0) {
         serializehelper(bdd_nodes + node->right, node->right, out);
     }
-    else if(nodelevel > 1) {
-        serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->left, BDD_NUM_LEAVES + node->left, out);
-        serializehelper(bdd_nodes + BDD_NUM_LEAVES + node->right, BDD_NUM_LEAVES + node->right, out);
-    }
 
-    if (nodelevel > 0) {
-        // convert level int to char level
-        char clevel = (char)('@' + nodelevel);
-        fputc(clevel, out);
+    int nodelevel = (int)(node -> level - '0');
+    char clevel = (char)('@' + nodelevel);
+    fputc(clevel, out);
+
+    if(*(bdd_index_map + node->left) == 0) {
         *(bdd_index_map + node->left) = nodecount++;
-        *(bdd_index_map + node->right) = nodecount++;
-        int leftindex = nodecount - 2;
-        int rightindex = nodecount - 1;
-        fprintf(out, "%d", leftindex);
-        fprintf(out, "%d", rightindex);
-        return 0;
+        leftindex = nodecount - 1;
     }
+    else {
+        leftindex = *(bdd_index_map + node->left);
+    }
+    if(*(bdd_index_map + node->right) == 0) {
+        *(bdd_index_map + node->right) = nodecount++;
+        rightindex = nodecount - 1;
+    }
+    else {
+        rightindex = *(bdd_index_map + node->right);
+    }
+    serialize_bit_convert(leftindex, out);
+    serialize_bit_convert(rightindex, out);
 
     return 0;
+
+}
+
+int newserializehelper(BDD_NODE *node, int index, FILE *out, int leftindex, int rightindex) {
+    // post-order traversal
+    // serialize left, right
+    if(node->level == 0) {
+        fputc('@', out);
+        char c = (char)(index);
+        fputc(c, out);
+        if(*(bdd_index_map + index) == 0) {
+            *(bdd_index_map + index) = nodecount++;
+        }
+        return index;
+    }
+
+    if(*(bdd_index_map + node->left) == 0) {
+        leftindex = serializehelper(bdd_nodes + node->left, node->left, out);
+    }
+    if(*(bdd_index_map + node->right) == 0) {
+        rightindex = serializehelper(bdd_nodes + node->right, node->right, out);
+    }
+
+    int nodelevel = (int)(node -> level - '0');
+    char clevel = (char)('@' + nodelevel);
+    fputc(clevel, out);
+
+    if(*(bdd_index_map + node->left) == 0) {
+        *(bdd_index_map + node->left) = nodecount++;
+    }
+    if(*(bdd_index_map + node->right) == 0) {
+        *(bdd_index_map + node->right) = nodecount++;
+    }
+    serialize_bit_convert(leftindex, out);
+    serialize_bit_convert(rightindex, out);
+
+    return bdd_lookup((int)(node->level - '0'), leftindex, rightindex);
+
 }
 
 int bdd_serialize(BDD_NODE *node, FILE *out) {
     int nodeindex = bdd_lookup((int)((node -> level) - '0'), node->left, node->right);
-    return serializehelper(node, nodeindex, out);
+    for(int i = 0; i < BDD_NODES_MAX; i++) {
+        *(bdd_index_map + i) = 0;
+    }
+    newserializehelper(node, nodeindex, out, 0, 0);
+    return 0;
 }
 
 BDD_NODE *bdd_deserialize(FILE *in) {

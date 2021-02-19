@@ -7,24 +7,27 @@
 #include "const.h"
 #include "debug.h"
 
+// void dfs(BDD_NODE *node) {
+//     if(node->level == 0) {
+//         return;
+//     }
+//     printf("%c %d %d\n", node->level, node->left, node->right);
+//     if(node->left > 255) dfs(bdd_nodes + node->left);
+//     if(node->right > 255) dfs(bdd_nodes + node->right);
+// }
+
 int pgm_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
     int wp = 0, hp = 0;
     size_t size = RASTER_SIZE_MAX;
     int result = img_read_pgm(in, &wp, &hp, raster_data, size);
-
     if(result == 0) {
         BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
-        // dfs(node);
-        // int val = (int)((node->level) - '0');
-        // printf("%d %d %d\n", val, node->left, node->right);
-        // dfs(node, 0);
-        // int serializedresult = bdd_serialize(node, out);
-        // if(serializedresult == 0) {
-        //     return 0;
-        // }
+        // bdd_serialize(node, out);
+        int success = img_write_birp(node, wp, hp, out);
+        if(success == -1) return -1;
     }
-    return -1;
+    return 0;
 }
 
 int birp_to_pgm(FILE *in, FILE *out) {

@@ -20,6 +20,7 @@
 
 int main(int argc, char **argv)
 {
+
 	pgm_to_birp(stdin, stdout);
     if(validargs(argc, argv))
         USAGE(*argv, EXIT_FAILURE);
