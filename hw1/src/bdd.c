@@ -99,13 +99,12 @@ int get_square_d(int w, int h) {
 }
 
 int from_raster_helper(int level, int loww, int lowh, int highw, int highh, unsigned char *raster, int pow, int w, int h, int left, int right) {
-    if(lowh >= h || highh >= h || highw >= w || loww >= w) {
-        return 0;
-    }
-
     if(level == 0) {
+        if(lowh >= h || highh >= h || highw >= w || loww >= w) {
+            return 0;
+        }
         // handle base case
-        unsigned char c = *(raster + (pow * lowh) + loww);
+        unsigned char c = *(raster + (w * lowh) + loww);
         int val = (int)(c);
         return val;
     }
