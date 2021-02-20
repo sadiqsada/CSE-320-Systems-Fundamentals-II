@@ -237,11 +237,49 @@ int bdd_serialize(BDD_NODE *node, FILE *out) {
     return 0;
 }
 
+int serialnumber = 1;
+BDD_NODE *bdd_deserialize_helper(FILE *in) {
+    int c;
+    while((c = fgetc(in)) != EOF) {
+        // leaf node
+        if((char)(c) == '@'){
+            int leafval = fgetc(in);
+            *(bdd_index_map + serialnumber) = leafval;
+            serialnumber++;
+        }
+        // non-leaf node
+        else {
+            int level = c - '@';
+            int leftserial, rightserial;
+            fread(&leftserial, 4, 1, in);
+            fread(&rightserial, 4, 1, in);
+
+            int leftnodeindex = *(bdd_index_map + leftserial);
+            int rightnodeindex = *(bdd_index_map + rightserial);
+            int nodeindex = bdd_lookup(level, leftnodeindex, rightnodeindex);
+            *(bdd_index_map + serialnumber) = nodeindex;
+            serialnumber++;
+        }
+    }
+    return bdd_nodes + *(bdd_index_map + serialnumber - 1);
+}
+
+// void dfs(BDD_NODE *node) {
+//     if(node->level == 0) {
+//         printf("%d\n", node->level);
+//         return;
+//     }
+//     printf("%c %d %d\n", node->level, node->left, node->right);
+//     dfs(bdd_nodes + node->left);
+//     dfs(bdd_nodes + node->right);
+// }
+
 BDD_NODE *bdd_deserialize(FILE *in) {
     // TO BE IMPLEMENTED
-
-    return NULL;
+    BDD_NODE *node = bdd_deserialize_helper(in);
+    return node;
 }
+
 
 unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
     // TO BE IMPLEMENTED

@@ -3,7 +3,7 @@
 
 #include "const.h"
 #include "debug.h"
-// #include "image.h" // remove this line
+#include "image.h" // remove this line
 
 #ifdef _STRING_H
 #error "Do not #include <string.h>. You will get a ZERO."
@@ -20,8 +20,6 @@
 
 int main(int argc, char **argv)
 {
-
-	pgm_to_birp(stdin, stdout);
     if(validargs(argc, argv))
         USAGE(*argv, EXIT_FAILURE);
     if(global_options & HELP_OPTION)
