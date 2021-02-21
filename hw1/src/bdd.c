@@ -138,6 +138,12 @@ BDD_NODE *bdd_from_raster(int w, int h, unsigned char *raster) {
 
 void bdd_to_raster(BDD_NODE *node, int w, int h, unsigned char *raster) {
     // TO BE IMPLEMENTED
+    for(int i = 0; i < h; i++) {
+        for(int j = 0; j < w; j++) {
+            unsigned char c = bdd_apply(node, i, j);
+            *(raster + (w * i) + j) = c;
+        }
+    }
 }
 
 void serialize_bit_convert(int num, FILE *out) {
@@ -280,11 +286,38 @@ BDD_NODE *bdd_deserialize(FILE *in) {
     return node;
 }
 
+int get_bit_at_pos(int num, int pos) {
+    return 1 & (num >> pos);
+}
 
 unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
     // TO BE IMPLEMENTED
-
-    return 0;
+    BDD_NODE *root = node;
+    int pixel = 0;
+    // printf("%c %d %d\n", root->level, r, c);
+    while(root->level > 0) {
+        // printf("%c %d %d\n", root->level, pixel, root->left);
+        int level = root->level - '0';
+        int bitpos = 0, bitval = 0;
+        if(level % 2 == 0) {
+            bitpos = (level - 2) / 2;
+            bitval = get_bit_at_pos(r, bitpos);
+        }
+        else {
+            bitpos = (level - 1) / 2;
+            bitval = get_bit_at_pos(c, bitpos);
+        }
+        // printf("%d %d\n", bitpos, bitval);
+        if(bitval == 1) {
+            pixel = root->right;
+            root = bdd_nodes + root->right;
+        }
+        else if(bitval == 0) {
+            pixel = root->left;
+            root = bdd_nodes + root->left;
+        }
+    }
+    return pixel;
 }
 
 BDD_NODE *bdd_map(BDD_NODE *node, unsigned char (*func)(unsigned char)) {

@@ -23,16 +23,21 @@ int pgm_to_birp(FILE *in, FILE *out) {
     int result = img_read_pgm(in, &wp, &hp, raster_data, size);
     if(result == 0) {
         BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
-        // bdd_serialize(node, out);
         int success = img_write_birp(node, wp, hp, out);
         if(success == -1) return -1;
+        return 0;
     }
-    return 0;
+    return -1;
 }
 
 int birp_to_pgm(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
-    return -1;
+    int wp = 0, hp = 0;
+    BDD_NODE *node = img_read_birp(in, &wp, &hp);
+    if(node == NULL) return -1;
+    bdd_to_raster(node, wp, hp, raster_data);
+    int success = img_write_pgm(raster_data, wp, hp, out);
+    return (success == -1) ? -1 : 0;
 }
 
 int birp_to_birp(FILE *in, FILE *out) {

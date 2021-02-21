@@ -3,7 +3,7 @@
 
 #include "const.h"
 #include "debug.h"
-#include "image.h" // remove this line
+// #include "image.h" // remove this line
 
 #ifdef _STRING_H
 #error "Do not #include <string.h>. You will get a ZERO."

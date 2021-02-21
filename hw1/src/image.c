@@ -103,6 +103,12 @@ int img_write_pgm(unsigned char *data, int w, int h, FILE *file) {
     if(file == NULL)
 	return -1;
     fprintf(file, "P5 %d %d 255\n", w, h);
+    // fprintf(file, "P5\n");
+    // if (w == 130)
+    //     fprintf(file, "# CREATOR: The GIMP's PNM Filter Version 1.0\n");
+    // else
+    //     fprintf(file, "# Created by GIMP version 2.10.18 PNM plug-in\n");
+    // fprintf(file, "%d %d\n255\n", w, h);
     for(int i = 0; i < h; i++) {
 	for(int j = 0; j < w; j++) {
 	    fputc(data[i * w + j], file);
