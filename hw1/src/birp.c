@@ -50,7 +50,7 @@ int pgm_to_ascii(FILE *in, FILE *out) {
     int wp = 0, hp = 0;
     size_t size = RASTER_SIZE_MAX;
     int result = img_read_pgm(in, &wp, &hp, raster_data, size);
-
+    if(result == -1) return -1;
     if(result == 0) {
         for(int i = 0; i < hp; i++) {
             for(int j = 0; j < wp; j++) {
@@ -73,13 +73,37 @@ int pgm_to_ascii(FILE *in, FILE *out) {
         }
     }
 
-    return -1;
+    return 0;
 
 }
 
 int birp_to_ascii(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
-    return -1;
+    int wp = 0, hp = 0;
+    BDD_NODE *node = img_read_birp(in, &wp, &hp);
+    if(node == NULL) return -1;
+
+    bdd_to_raster(node, wp, hp, raster_data);
+
+    for(int i = 0; i < hp; i++) {
+        for(int j = 0; j < wp; j++) {
+            unsigned char val = *(raster_data + (wp * i) + j);
+            if(val >= 0 && val <= 63) {
+                printf("%c", ' ');
+            }
+            else if(val >= 64 && val <= 127) {
+                printf("%c", '.');
+            }
+            else if(val >= 128 && val <= 191) {
+                printf("%c", '*');
+            }
+            else if(val >= 192 && val <= 255) {
+                printf("%c", '@');
+            }
+        }
+        printf("%c", '\n');
+    }
+    return 0;
 }
 
 /*
