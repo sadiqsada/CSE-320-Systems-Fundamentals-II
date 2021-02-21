@@ -42,7 +42,15 @@ int birp_to_pgm(FILE *in, FILE *out) {
 
 int birp_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
-    return -1;
+    int wp = 0, hp = 0;
+    BDD_NODE *node = img_read_birp(in, &wp, &hp);
+    if(node == NULL) return -1;
+
+    int success = img_write_birp(node, wp, hp, out);
+    if(success) {
+        return -1;
+    }
+    return 0;
 }
 
 int pgm_to_ascii(FILE *in, FILE *out) {
