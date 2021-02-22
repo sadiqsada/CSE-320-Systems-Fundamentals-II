@@ -68,20 +68,20 @@ int pgm_to_ascii(FILE *in, FILE *out) {
             for(int j = 0; j < wp; j++) {
                 int val = *(raster_data + (i * wp) + j);
                 if(val >= 0 && val <= 63) {
-                    printf("%c", ' ');
+                    fprintf(out, "%c", ' ');
                 }
                 else if(val >= 64 && val <= 127) {
-                    printf("%c", '.');
+                    fprintf(out, "%c", '.');
                 }
                 else if(val >= 128 && val <= 191) {
-                    printf("%c", '*');
+                    fprintf(out, "%c", '*');
                 }
                 else if(val >= 192 && val <= 255) {
-                    printf("%c", '@');
+                    fprintf(out, "%c", '@');
                 }
             }
 
-            printf("%c", '\n');
+            fprintf(out, "%c", '\n');
         }
     }
 
@@ -101,19 +101,19 @@ int birp_to_ascii(FILE *in, FILE *out) {
         for(int j = 0; j < wp; j++) {
             unsigned char val = *(raster_data + (wp * i) + j);
             if(val >= 0 && val <= 63) {
-                printf("%c", ' ');
+                fprintf(out, "%c", ' ');
             }
             else if(val >= 64 && val <= 127) {
-                printf("%c", '.');
+                fprintf(out, "%c", '.');
             }
             else if(val >= 128 && val <= 191) {
-                printf("%c", '*');
+                fprintf(out, "%c", '*');
             }
             else if(val >= 192 && val <= 255) {
-                printf("%c", '@');
+                fprintf(out, "%c", '@');
             }
         }
-        printf("%c", '\n');
+        fprintf(out, "%c", '\n');
     }
     return 0;
 }
