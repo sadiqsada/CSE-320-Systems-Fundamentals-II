@@ -320,9 +320,42 @@ unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
     return pixel;
 }
 
+int bdd_map_helper(BDD_NODE *node, int index, unsigned char (*func)(unsigned char), int left, int right) {
+    if(node->level == 0) {
+        if(*(bdd_index_map + index) != -1) {
+            return *(bdd_index_map + index);
+        }
+        int val = (*func)(index);
+        *(bdd_index_map + index) = val;
+        return val;
+    }
+    if(*(bdd_index_map + node->left) == -1) {
+        left = bdd_map_helper(bdd_nodes + node->left, node->left, func, left, right);
+    }
+    else {
+        left = *(bdd_index_map + node->left);
+    }
+    if(*(bdd_index_map + node->right) == -1) {
+        right = bdd_map_helper(bdd_nodes + node->right, node->right, func, left, right);
+    }
+    else {
+        right = *(bdd_index_map + node->right);
+    }
+    // printf("%c %d %d %d %d\n", node->level, node->left, node->right, left, right);
+    int newindex = bdd_lookup((int)(node->level - '0'), left, right);
+    *(bdd_index_map + index) = newindex;
+    // printf("%d\n", newindex);
+    return newindex;
+}
+
 BDD_NODE *bdd_map(BDD_NODE *node, unsigned char (*func)(unsigned char)) {
     // TO BE IMPLEMENTED
-    return NULL;
+    int currentindex = node - bdd_nodes;
+    for(int i = 0; i < BDD_NODES_MAX; i++) {
+        *(bdd_index_map + i) = -1;
+    }
+    int index = bdd_map_helper(node, currentindex, func, 0, 0);
+    return bdd_nodes + index;
 }
 
 BDD_NODE *bdd_rotate(BDD_NODE *node, int level) {

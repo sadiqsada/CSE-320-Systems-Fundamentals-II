@@ -40,12 +40,16 @@ int birp_to_pgm(FILE *in, FILE *out) {
     return (success == -1) ? -1 : 0;
 }
 
+unsigned char identity(unsigned char c) {
+    return c;
+}
+
 int birp_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
     int wp = 0, hp = 0;
     BDD_NODE *node = img_read_birp(in, &wp, &hp);
     if(node == NULL) return -1;
-
+    node = bdd_map(node, &identity);
     int success = img_write_birp(node, wp, hp, out);
     if(success) {
         return -1;
