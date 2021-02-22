@@ -44,11 +44,54 @@ unsigned char identity(unsigned char c) {
     return c;
 }
 
+unsigned char negative(unsigned char c) {
+    return (~c) + 1;
+}
+
+unsigned char threshold(unsigned char c) {
+    int tmask = 0x00ff;
+    int tparam = (global_options >> 16) & tmask;
+    if(tparam < 0 || tparam > 255) {
+        return -1;
+    }
+    if(c >= tparam) {
+        return 255;
+    }
+    else {
+        return 0;
+    }
+}
+
 int birp_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
     int wp = 0, hp = 0;
     BDD_NODE *node = img_read_birp(in, &wp, &hp);
     if(node == NULL) return -1;
+    // get transformation param from global_options
+    int mask = 0x000f;
+    int param = (global_options >> 8) & mask;
+
+    // negative
+    if(param == 1) {
+        node = bdd_map(node, (*negative));
+    }
+    // threshold
+    if(param == 2) {
+        node = bdd_map(node, (*threshold));
+    }
+
+    // zoom
+    if(param == 3) {
+        int zmask = 0x00ff;
+        int zparam = (global_options >> 16) & zmask;
+        if(zparam < 0 || zparam > 16) {
+            return -1;
+        }
+        node = bdd_zoom(node, (int)(node->level) * 2, zparam);
+        wp = wp * zparam;
+        hp = hp * zparam;
+    }
+
     int success = img_write_birp(node, wp, hp, out);
     if(success) {
         return -1;
