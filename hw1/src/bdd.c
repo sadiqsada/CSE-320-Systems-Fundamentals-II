@@ -33,7 +33,7 @@ int hash(int level, int left, int right) {
  */
 int bdd_lookup(int level, int left, int right) {
     // TO BE IMPLEMENTED
-    if(left < 0 || right < 0 || left >= BDD_NODES_MAX || right >= BDD_NODES_MAX || level < 0 || level >= BDD_LEVELS_MAX) return -1;
+    // if(left < 0 || right < 0 || left >= BDD_NODES_MAX || right >= BDD_NODES_MAX || level < 0 || level >= BDD_LEVELS_MAX) return -1;
 
     if(left == right) return left;
 
@@ -364,7 +364,38 @@ BDD_NODE *bdd_rotate(BDD_NODE *node, int level) {
     return NULL;
 }
 
+int bdd_zoom_in(BDD_NODE *node, int index, int factor, int left, int right) {
+    if(node->level == 0) {
+        if(*(bdd_index_map + index) != -1) {
+            return *(bdd_index_map + index);
+        }
+        *(bdd_index_map + index) = index;
+        return index;
+    }
+
+    if(*(bdd_index_map + node->left) == -1) {
+        left = bdd_zoom_in(bdd_nodes + node->left, node->left, factor, left, right);
+    }
+    else {
+        left = *(bdd_index_map + node->left);
+    }
+    if(*(bdd_index_map + node->right) == -1) {
+        right = bdd_zoom_in(bdd_nodes + node->right, node->right, factor, left, right);
+    }
+    else {
+        right = *(bdd_index_map + node->right);
+    }
+    int newindex = bdd_lookup((int)(node->level - '0') + 2 * factor, left, right);
+    *(bdd_index_map + index) = newindex;
+    return newindex;
+}
+
 BDD_NODE *bdd_zoom(BDD_NODE *node, int level, int factor) {
     // TO BE IMPLEMENTED
-    return NULL;
+    for(int i = 0; i < BDD_NODES_MAX; i++) {
+        *(bdd_index_map + i) = -1;
+    }
+    int index = node - bdd_nodes;
+    int newindex = bdd_zoom_in(node, index, factor, 0, 0);
+    return bdd_nodes + newindex;
 }

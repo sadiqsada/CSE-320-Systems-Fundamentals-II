@@ -49,7 +49,6 @@ int birp_to_birp(FILE *in, FILE *out) {
     int wp = 0, hp = 0;
     BDD_NODE *node = img_read_birp(in, &wp, &hp);
     if(node == NULL) return -1;
-    node = bdd_map(node, &identity);
     int success = img_write_birp(node, wp, hp, out);
     if(success) {
         return -1;
