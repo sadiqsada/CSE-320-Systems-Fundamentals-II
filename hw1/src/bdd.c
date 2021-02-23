@@ -391,7 +391,7 @@ int bdd_zoom_in(BDD_NODE *node, int index, int factor, int left, int right) {
 }
 
 int bdd_zoom_out(BDD_NODE *node, int index, int factor, int left, int right) {
-    if(node->level == 2 * factor) {
+    if((int)(node->level - '0') <= 2 * factor || node->level == 0) {
         if(*(bdd_index_map + index) != -1) {
             return *(bdd_index_map + index);
         }
@@ -401,7 +401,7 @@ int bdd_zoom_out(BDD_NODE *node, int index, int factor, int left, int right) {
         }
         else {
             index = 255;
-            *(bdd_index_map) = index;
+            *(bdd_index_map + index) = index;
         }
         return index;
     }

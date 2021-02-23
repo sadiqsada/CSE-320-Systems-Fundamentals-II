@@ -83,18 +83,23 @@ int birp_to_birp(FILE *in, FILE *out) {
     if(param == 3) {
         int zmask = 0x00ff;
         int zparam = (global_options >> 16) & zmask;
+        if(zparam >> 7 == 1) {
+            zparam--;
+            zparam = zparam ^ 0xff;
+        }
         if(zparam < 0 || zparam > 16) {
             return -1;
         }
-        node = bdd_zoom(node, (int)(node->level) / 2, zparam);
-        wp = wp * zparam;
-        hp = hp * zparam;
+        node = bdd_zoom(node, (int)(node->level - '0') / 2, zparam);
+        wp = wp / 2;
+        hp = hp / 2;
     }
 
     int success = img_write_birp(node, wp, hp, out);
     if(success) {
         return -1;
     }
+
     return 0;
 }
 
