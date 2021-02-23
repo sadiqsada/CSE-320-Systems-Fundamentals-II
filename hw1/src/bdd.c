@@ -429,6 +429,6 @@ BDD_NODE *bdd_zoom(BDD_NODE *node, int level, int factor) {
         *(bdd_index_map + i) = -1;
     }
     int index = node - bdd_nodes;
-    int newindex = bdd_zoom_in(node, index, factor, 0, 0);
+    int newindex = bdd_zoom_out(node, index, factor, 0, 0);
     return bdd_nodes + newindex;
 }

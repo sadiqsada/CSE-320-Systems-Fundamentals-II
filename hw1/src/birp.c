@@ -79,7 +79,6 @@ int birp_to_birp(FILE *in, FILE *out) {
     if(param == 2) {
         node = bdd_map(node, (*threshold));
     }
-
     // zoom
     if(param == 3) {
         int zmask = 0x00ff;
@@ -87,7 +86,7 @@ int birp_to_birp(FILE *in, FILE *out) {
         if(zparam < 0 || zparam > 16) {
             return -1;
         }
-        node = bdd_zoom(node, (int)(node->level) * 2, zparam);
+        node = bdd_zoom(node, (int)(node->level) / 2, zparam);
         wp = wp * zparam;
         hp = hp * zparam;
     }
