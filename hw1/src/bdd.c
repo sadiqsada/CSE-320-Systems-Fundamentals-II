@@ -390,6 +390,39 @@ int bdd_zoom_in(BDD_NODE *node, int index, int factor, int left, int right) {
     return newindex;
 }
 
+int bdd_zoom_out(BDD_NODE *node, int index, int factor, int left, int right) {
+    if(node->level == 2 * factor) {
+        if(*(bdd_index_map + index) != -1) {
+            return *(bdd_index_map + index);
+        }
+        if(node -> level == 0 && index == 0) {
+            *(bdd_index_map + index) = index;
+            return index;
+        }
+        else {
+            index = 255;
+            *(bdd_index_map) = index;
+        }
+        return index;
+    }
+
+    if(*(bdd_index_map + node->left) == -1) {
+        left = bdd_zoom_out(bdd_nodes + node->left, node->left, factor, left, right);
+    }
+    else {
+        left = *(bdd_index_map + node->left);
+    }
+    if(*(bdd_index_map + node->right) == -1) {
+        right = bdd_zoom_out(bdd_nodes + node->right, node->right, factor, left, right);
+    }
+    else {
+        right = *(bdd_index_map + node->right);
+    }
+    int newindex = bdd_lookup((int)(node->level - '0') - 2 * factor, left, right);
+    *(bdd_index_map + index) = newindex;
+    return newindex;
+}
+
 BDD_NODE *bdd_zoom(BDD_NODE *node, int level, int factor) {
     // TO BE IMPLEMENTED
     for(int i = 0; i < BDD_NODES_MAX; i++) {
