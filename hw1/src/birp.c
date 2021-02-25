@@ -7,15 +7,6 @@
 #include "const.h"
 #include "debug.h"
 
-// void dfs(BDD_NODE *node) {
-//     if(node->level == 0) {
-//         return;
-//     }
-//     printf("%c %d %d\n", node->level, node->left, node->right);
-//     if(node->left > 255) dfs(bdd_nodes + node->left);
-//     if(node->right > 255) dfs(bdd_nodes + node->right);
-// }
-
 int pgm_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
     int wp = 0, hp = 0;
@@ -62,6 +53,28 @@ unsigned char threshold(unsigned char c) {
     }
 }
 
+int get_square_d_2(int w, int h) {
+    int d = 1;
+    int maxwh = w > h ? w : h;
+    int pow = 2;
+    if(maxwh < 4) return 1;
+    while(pow * 2 <= maxwh) {
+        d++;
+        pow *= 2;
+    }
+    return (pow == maxwh)? d : ++d;
+}
+
+// void dfs(BDD_NODE *node) {
+//     if(node->level == 0) {
+//         printf("%d\n", node->level);
+//         return;
+//     }
+//     printf("%c %d %d\n", node->level, node->left, node->right);
+//     dfs(bdd_nodes + node->left);
+//     dfs(bdd_nodes + node->right);
+// }
+
 int birp_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
     int wp = 0, hp = 0;
@@ -95,8 +108,11 @@ int birp_to_birp(FILE *in, FILE *out) {
         hp = hp / 2;
     }
 
-    int success = img_write_birp(node, wp, hp, out);
-    if(success) {
+    int lvl = 2 * get_square_d_2(wp, hp);
+    BDD_NODE *newnode = bdd_rotate(node, lvl);
+
+    int success = img_write_birp(newnode, wp, hp, out);
+    if(success == -1) {
         return -1;
     }
 

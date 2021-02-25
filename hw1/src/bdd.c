@@ -3,7 +3,7 @@
 
 #include "bdd.h"
 #include "debug.h"
-
+#include "const.h"
 /*
  * Macros that take a pointer to a BDD node and obtain pointers to its left
  * and right child nodes, taking into account the fact that a node N at level l
@@ -294,9 +294,7 @@ unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
     // TO BE IMPLEMENTED
     BDD_NODE *root = node;
     int pixel = 0;
-    // printf("%c %d %d\n", root->level, r, c);
     while(root->level > 0) {
-        // printf("%c %d %d\n", root->level, pixel, root->left);
         int level = root->level - '0';
         int bitpos = 0, bitval = 0;
         if(level % 2 == 0) {
@@ -307,7 +305,6 @@ unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
             bitpos = (level - 1) / 2;
             bitval = get_bit_at_pos(c, bitpos);
         }
-        // printf("%d %d\n", bitpos, bitval);
         if(bitval == 1) {
             pixel = root->right;
             root = bdd_nodes + root->right;
@@ -341,10 +338,8 @@ int bdd_map_helper(BDD_NODE *node, int index, unsigned char (*func)(unsigned cha
     else {
         right = *(bdd_index_map + node->right);
     }
-    // printf("%c %d %d %d %d\n", node->level, node->left, node->right, left, right);
     int newindex = bdd_lookup((int)(node->level - '0'), left, right);
     *(bdd_index_map + index) = newindex;
-    // printf("%d\n", newindex);
     return newindex;
 }
 
@@ -358,10 +353,38 @@ BDD_NODE *bdd_map(BDD_NODE *node, unsigned char (*func)(unsigned char)) {
     return bdd_nodes + index;
 }
 
+int bdd_rotate_helper(BDD_NODE *node, int level, int index, int tl, int tr, int bl, int br) {
+    if(node->level == 0) {
+        return index;
+    }
+    // printf("%d %d\n", level, index);
+    tl = LEFT(node,level) -> left;
+    tr = LEFT(node,level) -> right;
+    bl = RIGHT(node,level) -> left;
+    br = RIGHT(node ,level) -> right;
+
+    BDD_NODE *tlnode = LEFT(LEFT(node,level), level - 1);
+    BDD_NODE *trnode = RIGHT(LEFT(node,level), level - 1);
+    BDD_NODE *blnode = LEFT(RIGHT(node,level), level - 1);
+    BDD_NODE *brnode = RIGHT(RIGHT(node,level), level - 1);
+
+    tl = bdd_rotate_helper(tlnode, level - 2, tl, tl, tr, bl, br);
+    tr = bdd_rotate_helper(trnode, level - 2, tr, tl, tr, bl, br);
+    bl = bdd_rotate_helper(blnode, level - 2, bl, tl, tr, bl, br);
+    br = bdd_rotate_helper(brnode, level - 2, br, tl, tr, bl, br);
+
+    int left = bdd_lookup(level - 1, tr, br);
+    int right = bdd_lookup(level - 1, tl, bl);
+    int newindex = bdd_lookup(level, left, right);
+
+    return newindex;
+}
+
 BDD_NODE *bdd_rotate(BDD_NODE *node, int level) {
     // TO BE IMPLEMENTED
-
-    return NULL;
+    int index = node - bdd_nodes;
+    int newindex = bdd_rotate_helper(node, level, index, 0, 0, 0, 0);
+    return bdd_nodes + newindex;
 }
 
 int bdd_zoom_in(BDD_NODE *node, int index, int factor, int left, int right) {
