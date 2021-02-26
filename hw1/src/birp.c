@@ -80,7 +80,6 @@ int birp_to_birp(FILE *in, FILE *out) {
     // get transformation param from global_options
     int mask = 0x000f;
     int param = (global_options >> 8) & mask;
-
     // negative
     if(param == 1) {
         node = bdd_map(node, (*negative));
@@ -94,6 +93,7 @@ int birp_to_birp(FILE *in, FILE *out) {
         int zmask = 0x00ff;
         int zparam = (global_options >> 16) & zmask;
         int inorout = 1;
+        printf("%d\n", zparam);
         if(zparam >> 7 == 1) {
             zparam--;
             zparam = zparam ^ 0xff;
@@ -124,10 +124,7 @@ int birp_to_birp(FILE *in, FILE *out) {
     }
 
     int success = img_write_birp(node, wp, hp, out);
-    if(success == -1) {
-        return -1;
-    }
-
+    if(success == -1) return -1;
     return 0;
 }
 
@@ -158,7 +155,6 @@ int pgm_to_ascii(FILE *in, FILE *out) {
             fprintf(out, "%c", '\n');
         }
     }
-
     return 0;
 
 }
@@ -271,27 +267,30 @@ int validargs(int argc, char **argv) {
         copyargv++;
     }
 
+
     // check -h flag
     // store copy of argv - if second argument is -h, return success
-    copyargv = argv;
-    char *firstarg = *copyargv; // first argument
+    if(argc > 1) {
+        copyargv = argv;
+        char *firstarg = *copyargv; // first argument
 
-    copyargv++;
-    char *secondarg = *copyargv; // second argument
+        copyargv++;
+        char *secondarg = *copyargv; // second argument
 
-    int firstargmatch = strcompare(firstarg, "bin/birp");
-    int secondargmatch = strcompare(secondarg, "-h");
+        int firstargmatch = strcompare(firstarg, "bin/birp");
+        int secondargmatch = strcompare(secondarg, "-h");
 
-    if(firstargmatch == 0 && secondargmatch == 0) {
+        if(firstargmatch == 0 && secondargmatch == 0) {
         // set global options most significant bit to 1
-        int bit = 1;
-        bit = bit << 31;
-        global_options = global_options | bit;
-        return 0;
+            int bit = 1;
+            bit = bit << 31;
+            global_options = global_options | bit;
+            return 0;
+        }
     }
 
     // check if number of arguments are valid
-    if(argc <= 1 || argc > 8) {
+    if(argc < 1 || argc > 8) {
         return -1;
     }
 
@@ -391,6 +390,7 @@ int validargs(int argc, char **argv) {
         global_options = global_options | bit;
 
     }
+
 
     copyargv = argv;
     int foundoptional = 0;

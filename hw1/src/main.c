@@ -24,7 +24,6 @@ int main(int argc, char **argv)
         USAGE(*argv, EXIT_FAILURE);
     if(global_options & HELP_OPTION)
         USAGE(*argv, EXIT_SUCCESS);
-
     // // TO BE IMPLEMENTED
 
     // // least significant four bits = input format
@@ -47,7 +46,7 @@ int main(int argc, char **argv)
 
     if(inputformat == 1 && outputformat == 3) {
     	int success = pgm_to_ascii(stdin, stdout);
-    	if(success == -1) return EXIT_FAILURE;
+        return success;
     }
     if(inputformat == 1 && outputformat == 2) {
     	int success = pgm_to_birp(stdin, stdout);
@@ -55,15 +54,15 @@ int main(int argc, char **argv)
     }
     if(inputformat == 2 && outputformat == 1) {
     	int success = birp_to_pgm(stdin, stdout);
-    	if(success == -1) return EXIT_FAILURE;
+    	return success;
     }
     if(inputformat == 2 && outputformat == 2) {
     	int success = birp_to_birp(stdin, stdout);
-    	if(success == -1) return EXIT_FAILURE;
+    	return success;
     }
     if(inputformat == 2 && outputformat == 3) {
     	int success = birp_to_ascii(stdin, stdout);
-    	if(success == -1) return EXIT_FAILURE;
+        return success;
     }
     else {
         return EXIT_FAILURE;

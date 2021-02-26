@@ -271,16 +271,6 @@ BDD_NODE *bdd_deserialize_helper(FILE *in) {
     return bdd_nodes + *(bdd_index_map + serialnumber - 1);
 }
 
-// void dfs(BDD_NODE *node) {
-//     if(node->level == 0) {
-//         printf("%d\n", node->level);
-//         return;
-//     }
-//     printf("%c %d %d\n", node->level, node->left, node->right);
-//     dfs(bdd_nodes + node->left);
-//     dfs(bdd_nodes + node->right);
-// }
-
 BDD_NODE *bdd_deserialize(FILE *in) {
     // TO BE IMPLEMENTED
     BDD_NODE *node = bdd_deserialize_helper(in);
