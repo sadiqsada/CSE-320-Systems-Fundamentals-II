@@ -92,3 +92,17 @@ Test(basecode_tests_suite, birp_basic_test, .timeout=5) {
     cr_assert_eq(return_code, EXIT_SUCCESS,
                  "Program output did not match reference output.");
 }
+
+// Test(new_tests_suite, birp_to_birp_identity_test, .timeout=5) {
+//     char *cmd = "bin/birp -i < rsrc/M.birp > test_output/M.birp";
+//     char *cmp = "cmp test_output/M.birp rsrc/M.birp";
+
+//     int return_code = WEXITSTATUS(system(cmd));
+//     cr_assert_eq(return_code, EXIT_SUCCESS,
+//                  "Program exited with %d instead of EXIT_SUCCESS",
+//          return_code);
+//     return_code = WEXITSTATUS(system(cmp));
+//     cr_assert_eq(return_code, EXIT_SUCCESS,
+//                  "Program output did not match reference output.");
+// }
+

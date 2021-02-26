@@ -4,6 +4,7 @@
 #include "bdd.h"
 #include "debug.h"
 #include "const.h"
+#include "image.h" // to be removed
 /*
  * Macros that take a pointer to a BDD node and obtain pointers to its left
  * and right child nodes, taking into account the fact that a node N at level l
@@ -180,7 +181,7 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
         char c = (char)(index);
         fputc(c, out);
         int baseserial = 0;
-        if(*(bdd_index_map + index) == 0) {
+        if(*(bdd_index_map + index) == -1) {
             *(bdd_index_map + index) = nodecount++;
             baseserial = nodecount - 1;
         }
@@ -190,11 +191,11 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
         return baseserial;
     }
 
-    if(*(bdd_index_map + node->left) == 0) {
+    if(*(bdd_index_map + node->left) == -1) {
         serializehelper(bdd_nodes + node->left, node->left, out);
     }
 
-    if(*(bdd_index_map + node->right) == 0) {
+    if(*(bdd_index_map + node->right) == -1) {
         serializehelper(bdd_nodes + node->right, node->right, out);
     }
 
@@ -203,7 +204,7 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
     char clevel = (char)('@' + nodelevel);
     fputc(clevel, out);
 
-    if(*(bdd_index_map + node->left) == 0) {
+    if(*(bdd_index_map + node->left) == -1) {
         *(bdd_index_map + node->left) = nodecount++;
         leftserial = nodecount - 1;
     }
@@ -212,7 +213,7 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
         leftserial = *(bdd_index_map + node->left);
     }
 
-    if(*(bdd_index_map + node->right) == 0) {
+    if(*(bdd_index_map + node->right) == -1) {
         *(bdd_index_map + node->right) = nodecount++;
         rightserial = nodecount - 1;
     }
@@ -220,7 +221,7 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
         rightserial = *(bdd_index_map + node->right);
     }
 
-    if(*(bdd_index_map + index) == 0) {
+    if(*(bdd_index_map + index) == -1) {
         *(bdd_index_map + index) = nodecount++;
         indexserial = nodecount - 1;
     }
@@ -237,7 +238,7 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
 int bdd_serialize(BDD_NODE *node, FILE *out) {
     int nodeindex = bdd_lookup((int)((node -> level) - '0'), node->left, node->right);
     for(int i = 0; i < BDD_NODES_MAX; i++) {
-        *(bdd_index_map + i) = 0;
+        *(bdd_index_map + i) = -1;
     }
     serializehelper(node, nodeindex, out);
     return 0;
@@ -353,38 +354,30 @@ BDD_NODE *bdd_map(BDD_NODE *node, unsigned char (*func)(unsigned char)) {
     return bdd_nodes + index;
 }
 
-int bdd_rotate_helper(BDD_NODE *node, int level, int index, int tl, int tr, int bl, int br) {
-    if(node->level == 0) {
-        return index;
+BDD_NODE *bdd_rotate_helper(BDD_NODE *node, int level) {
+    if(level == 0) {
+        return node;
     }
-    // printf("%d %d\n", level, index);
-    tl = LEFT(node,level) -> left;
-    tr = LEFT(node,level) -> right;
-    bl = RIGHT(node,level) -> left;
-    br = RIGHT(node ,level) -> right;
 
     BDD_NODE *tlnode = LEFT(LEFT(node,level), level - 1);
     BDD_NODE *trnode = RIGHT(LEFT(node,level), level - 1);
     BDD_NODE *blnode = LEFT(RIGHT(node,level), level - 1);
     BDD_NODE *brnode = RIGHT(RIGHT(node,level), level - 1);
 
-    tl = bdd_rotate_helper(tlnode, level - 2, tl, tl, tr, bl, br);
-    tr = bdd_rotate_helper(trnode, level - 2, tr, tl, tr, bl, br);
-    bl = bdd_rotate_helper(blnode, level - 2, bl, tl, tr, bl, br);
-    br = bdd_rotate_helper(brnode, level - 2, br, tl, tr, bl, br);
+    tlnode = bdd_rotate_helper(tlnode, level - 2);
+    trnode = bdd_rotate_helper(trnode, level - 2);
+    blnode = bdd_rotate_helper(blnode, level - 2);
+    brnode = bdd_rotate_helper(brnode, level - 2);
 
-    int left = bdd_lookup(level - 1, tr, br);
-    int right = bdd_lookup(level - 1, tl, bl);
+    int left = bdd_lookup(level - 1, trnode - bdd_nodes, brnode - bdd_nodes);
+    int right = bdd_lookup(level - 1, tlnode - bdd_nodes, blnode - bdd_nodes);
     int newindex = bdd_lookup(level, left, right);
 
-    return newindex;
+    return bdd_nodes + newindex;
 }
 
 BDD_NODE *bdd_rotate(BDD_NODE *node, int level) {
-    // TO BE IMPLEMENTED
-    int index = node - bdd_nodes;
-    int newindex = bdd_rotate_helper(node, level, index, 0, 0, 0, 0);
-    return bdd_nodes + newindex;
+    return bdd_rotate_helper(node, level);
 }
 
 int bdd_zoom_in(BDD_NODE *node, int index, int factor, int left, int right) {
@@ -451,7 +444,15 @@ BDD_NODE *bdd_zoom(BDD_NODE *node, int level, int factor) {
     for(int i = 0; i < BDD_NODES_MAX; i++) {
         *(bdd_index_map + i) = -1;
     }
+    int newindex = 0;
     int index = node - bdd_nodes;
-    int newindex = bdd_zoom_out(node, index, factor, 0, 0);
+    if(factor < 0) {
+        factor *= -1;
+        newindex = bdd_zoom_out(node, index, factor, 0, 0);
+    }
+    else {
+        newindex = bdd_zoom_in(node, index, factor, 0, 0);
+
+    }
     return bdd_nodes + newindex;
 }

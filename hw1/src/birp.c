@@ -15,8 +15,7 @@ int pgm_to_birp(FILE *in, FILE *out) {
     if(result == 0) {
         BDD_NODE *node = bdd_from_raster(wp, hp, raster_data);
         int success = img_write_birp(node, wp, hp, out);
-        if(success == -1) return -1;
-        return 0;
+        return success;
     }
     return -1;
 }
@@ -36,7 +35,7 @@ unsigned char identity(unsigned char c) {
 }
 
 unsigned char negative(unsigned char c) {
-    return (~c) + 1;
+    return 255 - c;
 }
 
 unsigned char threshold(unsigned char c) {
@@ -65,15 +64,13 @@ int get_square_d_2(int w, int h) {
     return (pow == maxwh)? d : ++d;
 }
 
-// void dfs(BDD_NODE *node) {
-//     if(node->level == 0) {
-//         printf("%d\n", node->level);
-//         return;
-//     }
-//     printf("%c %d %d\n", node->level, node->left, node->right);
-//     dfs(bdd_nodes + node->left);
-//     dfs(bdd_nodes + node->right);
-// }
+int power(int n, int k) {
+    int res = 1;
+    for(int i = 0; i < k; i++) {
+        res = res * n;
+    }
+    return res;
+}
 
 int birp_to_birp(FILE *in, FILE *out) {
     // TO BE IMPLEMENTED
@@ -96,22 +93,37 @@ int birp_to_birp(FILE *in, FILE *out) {
     if(param == 3) {
         int zmask = 0x00ff;
         int zparam = (global_options >> 16) & zmask;
+        int inorout = 1;
         if(zparam >> 7 == 1) {
             zparam--;
             zparam = zparam ^ 0xff;
+            inorout = -1;
         }
         if(zparam < 0 || zparam > 16) {
             return -1;
         }
-        node = bdd_zoom(node, (int)(node->level - '0') / 2, zparam);
-        wp = wp / 2;
-        hp = hp / 2;
+        int dimfactor = power(2, zparam);
+        if(dimfactor != 1) {
+            if(inorout == -1) zparam *= -1;
+            node = bdd_zoom(node, inorout, zparam);
+
+            if(inorout == 1) {
+                wp = wp * dimfactor;
+                hp = hp * dimfactor;
+            }
+            if(inorout == -1) {
+                wp = wp / dimfactor;
+                hp = hp / dimfactor;
+            }
+        }
     }
 
-    int lvl = 2 * get_square_d_2(wp, hp);
-    BDD_NODE *newnode = bdd_rotate(node, lvl);
+    if(param == 4) {
+        int lvl = 2 * get_square_d_2(wp, hp);
+        node = bdd_rotate(node, lvl);
+    }
 
-    int success = img_write_birp(newnode, wp, hp, out);
+    int success = img_write_birp(node, wp, hp, out);
     if(success == -1) {
         return -1;
     }

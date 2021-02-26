@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     }
     if(inputformat == 1 && outputformat == 2) {
     	int success = pgm_to_birp(stdin, stdout);
-    	if(success == -1) return EXIT_FAILURE;
+    	return success;
     }
     if(inputformat == 2 && outputformat == 1) {
     	int success = birp_to_pgm(stdin, stdout);
@@ -64,6 +64,9 @@ int main(int argc, char **argv)
     if(inputformat == 2 && outputformat == 3) {
     	int success = birp_to_ascii(stdin, stdout);
     	if(success == -1) return EXIT_FAILURE;
+    }
+    else {
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
