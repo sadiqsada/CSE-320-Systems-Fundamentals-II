@@ -355,7 +355,7 @@ BDD_NODE *bdd_map(BDD_NODE *node, unsigned char (*func)(unsigned char)) {
 }
 
 BDD_NODE *bdd_rotate_helper(BDD_NODE *node, int level) {
-    if(level == 0) {
+    if(level == 0 || node->level == 0) {
         return node;
     }
 
@@ -369,8 +369,8 @@ BDD_NODE *bdd_rotate_helper(BDD_NODE *node, int level) {
     blnode = bdd_rotate_helper(blnode, level - 2);
     brnode = bdd_rotate_helper(brnode, level - 2);
 
-    int left = bdd_lookup(level - 1, trnode - bdd_nodes, brnode - bdd_nodes);
-    int right = bdd_lookup(level - 1, tlnode - bdd_nodes, blnode - bdd_nodes);
+    int left = bdd_lookup(level - 1, (int)(trnode - bdd_nodes), (int)(brnode - bdd_nodes));
+    int right = bdd_lookup(level - 1, (int)(tlnode - bdd_nodes), (int)(blnode - bdd_nodes));
     int newindex = bdd_lookup(level, left, right);
 
     return bdd_nodes + newindex;
