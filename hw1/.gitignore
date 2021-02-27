@@ -1,5 +1,4 @@
 bin/
 build/
-test_output/
 *~
 *.out
