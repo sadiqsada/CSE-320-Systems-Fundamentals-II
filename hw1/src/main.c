@@ -44,31 +44,25 @@ int main(int argc, char **argv)
     int paramval = parammask & global_options;
     paramval = paramval >> 16;
 
+    int success = -1;
+
     if(inputformat == 1 && outputformat == 3) {
-    	int success = pgm_to_ascii(stdin, stdout);
-        return success;
+    	success = pgm_to_ascii(stdin, stdout);
     }
     if(inputformat == 1 && outputformat == 2) {
-    	int success = pgm_to_birp(stdin, stdout);
-    	return success;
+    	success = pgm_to_birp(stdin, stdout);
     }
     if(inputformat == 2 && outputformat == 1) {
-    	int success = birp_to_pgm(stdin, stdout);
-    	return success;
+    	success = birp_to_pgm(stdin, stdout);
     }
     if(inputformat == 2 && outputformat == 2) {
-    	int success = birp_to_birp(stdin, stdout);
-    	return success;
+    	success = birp_to_birp(stdin, stdout);
     }
     if(inputformat == 2 && outputformat == 3) {
-    	int success = birp_to_ascii(stdin, stdout);
-        return success;
-    }
-    else {
-        return EXIT_FAILURE;
+    	success = birp_to_ascii(stdin, stdout);
     }
 
-    return EXIT_SUCCESS;
+    (success == 0) ? exit(EXIT_SUCCESS) : exit(EXIT_FAILURE);
 }
 
 /*

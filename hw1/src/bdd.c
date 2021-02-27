@@ -62,6 +62,10 @@ int bdd_lookup(int level, int left, int right) {
     }
 
     // node about to be inserted is not a leaf
+    if(bdd_node_size == BDD_NODES_MAX) {
+        return -1;
+    }
+
     BDD_NODE *newnode = bdd_nodes + (256 + bdd_node_size);
 
     newnode -> level = (char)(level + '0');
@@ -236,17 +240,18 @@ int serializehelper(BDD_NODE *node, int index, FILE *out) {
 }
 
 int bdd_serialize(BDD_NODE *node, FILE *out) {
-    int nodeindex = bdd_lookup((int)((node -> level) - '0'), node->left, node->right);
     for(int i = 0; i < BDD_NODES_MAX; i++) {
         *(bdd_index_map + i) = -1;
     }
-    serializehelper(node, nodeindex, out);
+    nodecount = 1;
+    leftserial = 0, rightserial = 0, indexserial = 0;
+
+    serializehelper(node, node - bdd_nodes, out);
     return 0;
 }
 
-int serialnumber = 1;
-BDD_NODE *bdd_deserialize_helper(FILE *in) {
-    int c;
+BDD_NODE *bdd_deserialize_helper(FILE *in, int serialnumber) {
+    int c = 0;
     while((c = fgetc(in)) != EOF) {
         // leaf node
         if((char)(c) == '@'){
@@ -257,7 +262,7 @@ BDD_NODE *bdd_deserialize_helper(FILE *in) {
         // non-leaf node
         else {
             int level = c - '@';
-            int leftserial, rightserial;
+            int leftserial = 0, rightserial = 0;
             fread(&leftserial, 4, 1, in);
             fread(&rightserial, 4, 1, in);
 
@@ -273,7 +278,10 @@ BDD_NODE *bdd_deserialize_helper(FILE *in) {
 
 BDD_NODE *bdd_deserialize(FILE *in) {
     // TO BE IMPLEMENTED
-    BDD_NODE *node = bdd_deserialize_helper(in);
+    for(int i = 0; i < BDD_NODES_MAX; i++) {
+        *(bdd_index_map + i) = -1;
+    }
+    BDD_NODE *node = bdd_deserialize_helper(in, 1);
     return node;
 }
 
@@ -284,7 +292,7 @@ int get_bit_at_pos(int num, int pos) {
 unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
     // TO BE IMPLEMENTED
     BDD_NODE *root = node;
-    int pixel = 0;
+    int pixel = node - bdd_nodes;
     while(root->level > 0) {
         int level = root->level - '0';
         int bitpos = 0, bitval = 0;
@@ -308,7 +316,7 @@ unsigned char bdd_apply(BDD_NODE *node, int r, int c) {
     return pixel;
 }
 
-int bdd_map_helper(BDD_NODE *node, int index, unsigned char (*func)(unsigned char), int left, int right) {
+int bdd_map_helper(BDD_NODE *node, int index, unsigned char (*func)(unsigned char)) {
     if(node->level == 0) {
         if(*(bdd_index_map + index) != -1) {
             return *(bdd_index_map + index);
@@ -317,14 +325,15 @@ int bdd_map_helper(BDD_NODE *node, int index, unsigned char (*func)(unsigned cha
         *(bdd_index_map + index) = val;
         return val;
     }
+    int left = 0, right = 0;
     if(*(bdd_index_map + node->left) == -1) {
-        left = bdd_map_helper(bdd_nodes + node->left, node->left, func, left, right);
+        left = bdd_map_helper(bdd_nodes + node->left, node->left, func);
     }
     else {
         left = *(bdd_index_map + node->left);
     }
     if(*(bdd_index_map + node->right) == -1) {
-        right = bdd_map_helper(bdd_nodes + node->right, node->right, func, left, right);
+        right = bdd_map_helper(bdd_nodes + node->right, node->right, func);
     }
     else {
         right = *(bdd_index_map + node->right);
@@ -340,7 +349,8 @@ BDD_NODE *bdd_map(BDD_NODE *node, unsigned char (*func)(unsigned char)) {
     for(int i = 0; i < BDD_NODES_MAX; i++) {
         *(bdd_index_map + i) = -1;
     }
-    int index = bdd_map_helper(node, currentindex, func, 0, 0);
+    int index = bdd_map_helper(node, currentindex, func);
+
     return bdd_nodes + index;
 }
 

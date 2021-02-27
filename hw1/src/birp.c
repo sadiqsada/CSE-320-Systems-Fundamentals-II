@@ -80,6 +80,7 @@ int birp_to_birp(FILE *in, FILE *out) {
     // get transformation param from global_options
     int mask = 0x000f;
     int param = (global_options >> 8) & mask;
+
     // negative
     if(param == 1) {
         node = bdd_map(node, (*negative));
@@ -93,7 +94,6 @@ int birp_to_birp(FILE *in, FILE *out) {
         int zmask = 0x00ff;
         int zparam = (global_options >> 16) & zmask;
         int inorout = 1;
-        printf("%d\n", zparam);
         if(zparam >> 7 == 1) {
             zparam--;
             zparam = zparam ^ 0xff;
@@ -105,15 +105,22 @@ int birp_to_birp(FILE *in, FILE *out) {
         int dimfactor = power(2, zparam);
         if(dimfactor != 1) {
             if(inorout == -1) zparam *= -1;
+            int level = node->level - '0';
+            if(dimfactor > level) {
+                return -1;
+            }
             node = bdd_zoom(node, inorout, zparam);
 
             if(inorout == 1) {
                 wp = wp * dimfactor;
                 hp = hp * dimfactor;
+                if(wp > 8192 || hp > 8192) return -1;
             }
             if(inorout == -1) {
                 wp = wp / dimfactor;
                 hp = hp / dimfactor;
+                if(wp == 0) wp = 1;
+                if(hp == 0) hp = 1;
             }
         }
     }
@@ -122,7 +129,6 @@ int birp_to_birp(FILE *in, FILE *out) {
         int lvl = 2 * get_square_d_2(wp, hp);
         node = bdd_rotate(node, lvl);
     }
-
     int success = img_write_birp(node, wp, hp, out);
     if(success == -1) return -1;
     return 0;
@@ -423,6 +429,8 @@ int validargs(int argc, char **argv) {
                 bit = bit << 8;
                 global_options = global_options | bit;
                 // get threshold param
+                int numargs = copyargv - argv;
+                if(argc - 1 == numargs) return -1;
                 char *nextcopy = *(copyargv + 1);
                 int threshold = convertstrtoint(nextcopy);
                 if(threshold < 0 || threshold > 255) {
@@ -441,6 +449,9 @@ int validargs(int argc, char **argv) {
                 bit = bit << 8;
                 global_options = global_options | bit;
                 // get factor param
+                int numargs = copyargv - argv;
+                if(argc - 1 == numargs) return -1;
+
                 char *nextcopy = *(copyargv + 1);
                 int factor = convertstrtoint(nextcopy);
                 if(factor < 0 || factor > 16) {
@@ -460,6 +471,9 @@ int validargs(int argc, char **argv) {
                 global_options = global_options | bit;
 
                 // get factor param
+                int numargs = copyargv - argv;
+                if(argc - 1 == numargs) return -1;
+
                 char *nextcopy = *(copyargv + 1);
                 int factor = convertstrtoint(nextcopy);
                 if(factor < 0 || factor > 16) {
