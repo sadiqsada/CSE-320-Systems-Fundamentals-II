@@ -391,7 +391,7 @@ int code;
   switch (type)
   {
   case T_COMMENT:
-    if (com_short[code] != '\0')
+    if (*com_short[code] != '\0')
       (void)fprintf(dr->outfile, " %s ", com_short[code]);
     else
       (void)fprintf(dr->outfile, " %s ", com_long[code]);
