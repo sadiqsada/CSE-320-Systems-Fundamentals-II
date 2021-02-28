@@ -1295,7 +1295,7 @@ char c;
     m->tocol = curcol;
     m->tolig = curlig;
 
-    /*m->topiece = curpiece ; /* ? */
+    /*m->topiece = curpiece ;  ? */
 
     if (configuring)
       (void)configure();
