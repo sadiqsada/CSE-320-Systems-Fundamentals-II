@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include <ctype.h>
+#include <string.h>
 #include "chesstype.h"
 #include "notation.h"
 #include "drivers.h"
