@@ -1834,8 +1834,9 @@ char *argv[];
   init_board(tos);
 
   /* allocation of move descriptor */
+  m = new_move();
+  init_move(m);
   m->type = VOID;
-  /*init_move(m);*/
 
   /* allocation of the play descriptor */
   theplay = (play *)malloc(sizeof(play));
