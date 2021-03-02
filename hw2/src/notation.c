@@ -451,7 +451,7 @@ depl *new_move()
   int i;
   static int counter = 0;
 
-  tmp = (depl *)malloc(sizeof(depl *));
+  tmp = (depl *)malloc(sizeof(*tmp));
   ALLOCP(tmp);
   for (i = 0; i < ((sizeof(depl)) / sizeof(int)); i++)
     ((int *)tmp)[i] = 0;
@@ -1863,6 +1863,10 @@ char *argv[];
 
   /* terminates output files */
   output_end(dr);
+
+  free(tos);
+  free(m);
+  free(theplay);
 
   /* close files */
   close_files();
