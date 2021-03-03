@@ -223,17 +223,17 @@ depl *d;
 #endif
 {
   // char ligne[128] ;
-  char themove[128];
-  char thepiece[16];
-  char debcol[16];
-  char frommove[16];
-  char tomove[16];
-  char captsymb[16];
-  char lie[16];
-  char prom[16];
+  char themove[128] = "";
+  char thepiece[16] = "";
+  char debcol[16] = "";
+  char frommove[16] = "";
+  char tomove[16] = "";
+  char captsymb[16] = "";
+  char lie[16] = "";
+  char prom[16] = "";
 
   int ambigue = FALSE;
-  int ambigueline, ambiguecols;
+  int ambigueline = 0, ambiguecols = 0;
 
   themove[0] = thepiece[0] = '\0';
   frommove[0] = tomove[0] = lie[0] = prom[0] = '\0';
