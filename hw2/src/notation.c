@@ -1603,9 +1603,9 @@ void init_parse(m)
 
   curdigit = curmove = 0;
 
-  /*if (movecount != m->move)
-    (void) fprintf(stderr,"problem in move numbering: %d vs %d\n",
-		   m->move, movecount);*/
+  if (movecount != m->move)
+    (void)fprintf(stderr, "problem in move numbering: %d vs %d\n",
+                  m->move, movecount);
 }
 
 /* ------------------- top routines -------------------- */
@@ -1848,7 +1848,7 @@ char *argv[];
   yyin = infile;
   yyout = stderr;
 
-  /*init_parse(m); */
+  init_parse(m);
   yylex();
 
   if ((count == 0) && !error_flag)
