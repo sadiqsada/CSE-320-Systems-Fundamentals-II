@@ -468,7 +468,7 @@ void init_move(m)
     depl *m;
 #endif
 {
-  m->move = 1;
+  m->move = 0;
   m->whiteturn = FALSE;
 }
 
@@ -1842,7 +1842,7 @@ char *argv[];
   theplay = (play *)malloc(sizeof(play));
   theplay->initial = tos;
   theplay->chain = m;
-  movecount = 1;
+  movecount = 0;
 
   /* main analysis routine */
   yyin = infile;
