@@ -469,7 +469,7 @@ void init_move(m)
 #endif
 {
   m->move = 1;
-  m->whiteturn = TRUE;
+  m->whiteturn = FALSE;
 }
 
 #ifdef __STDC__
