@@ -1850,6 +1850,7 @@ char *argv[];
 
   init_parse(m);
   yylex();
+  free(m);
 
   if ((count == 0) && !error_flag)
     output_board(dr, tos);
@@ -1863,7 +1864,7 @@ char *argv[];
 
   /* terminates output files */
   output_end(dr);
-
+  yylex_destroy();
   // free(tos);
   // free(m);
   // free(theplay);

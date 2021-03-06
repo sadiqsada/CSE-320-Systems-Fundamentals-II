@@ -5,17 +5,18 @@
 #ifndef _HEADER_LEXER
 #define _HEADER_LEXER
 
+int yylex_destroy(void);
+
 extern int column;
 extern int lineno;
 
-extern FILE * yyin;
-extern FILE * yyout;
+extern FILE *yyin;
+extern FILE *yyout;
 
 #ifdef __STDC__
 extern int yylex(/*void*/);
 #else
 extern int yylex(/*void*/);
 #endif
-
 
 #endif
