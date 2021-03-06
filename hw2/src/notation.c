@@ -1864,9 +1864,9 @@ char *argv[];
   /* terminates output files */
   output_end(dr);
 
-  free(tos);
-  free(m);
-  free(theplay);
+  // free(tos);
+  // free(m);
+  // free(theplay);
 
   /* close files */
   close_files();
