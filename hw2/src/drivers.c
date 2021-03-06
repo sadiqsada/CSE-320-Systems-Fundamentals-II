@@ -764,7 +764,7 @@ format *new_driver()
   ALLOCP(tmp);
   for (i = 0; i < ((sizeof(format)) / sizeof(int)); i++)
     ((int *)tmp)[i] = 0;
-  tmp->output_move_format = ALGEBRAIC;
+  tmp->output_move_format = SHORTENED;
   tmp->print_headers = TRUE;
   return (tmp);
 }
