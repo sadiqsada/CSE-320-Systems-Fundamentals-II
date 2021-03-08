@@ -739,6 +739,7 @@ void exit_variation()
 
     l--;
     free(m);
+    free(tos);
     m = stack[l].d;
     tos = stack[l].b;
 
