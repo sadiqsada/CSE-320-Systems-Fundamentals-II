@@ -519,6 +519,11 @@ static depl *add_variation(mo)
     depl *mo;
 #endif
 {
+  if (mo == NULL || mo->prev == NULL)
+  {
+    exit(1);
+  }
+
   depl *ip; /* insertion point */
 
   ip = mo;
