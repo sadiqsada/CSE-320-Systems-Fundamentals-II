@@ -1657,19 +1657,19 @@ char *argv[];
     case 'f':
       in_language = find_keyword(t_language, NBLANGUAGES,
                                  DEFAULT_INPUT_LANGUAGE,
-                                 argv[options_index], TRUE);
+                                 optarg, TRUE);
       break;
 
     case 't': /* to langage */
       out_language = find_keyword(t_language, NBLANGUAGES,
                                   DEFAULT_OUTPUT_LANGUAGE,
-                                  argv[options_index], TRUE);
+                                  optarg, TRUE);
       break;
 
     case 'o': /* next arg is output file */
-      if ((dr->outfile = fopen(argv[options_index], "w+")) == NULL)
+      if ((dr->outfile = fopen(optarg, "w+")) == NULL)
       {
-        (void)fprintf(stderr, "can't open %s output file\n", argv[optind]);
+        (void)fprintf(stderr, "can't open %s output file\n", optarg);
         (void)fprintf(stderr, "assume stdout for output\n");
       }
       break;
