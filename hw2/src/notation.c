@@ -1690,13 +1690,13 @@ char *argv[];
 
     case 'c':
       i = 0;
-      while (isdigit(argv[options_index][i]))
+      while (isdigit(optarg[i]))
       {
         move_to_display[nb_move_to_dsp] = 0;
-        while (isdigit(argv[options_index][i]))
+        while (isdigit(optarg[i]))
         {
           move_to_display[nb_move_to_dsp] =
-              ((int)argv[options_index][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+              (optarg[i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
           i++;
         }
         nb_move_to_dsp++;
@@ -1705,7 +1705,7 @@ char *argv[];
           fatal((stderr, "max. number of move to display exceeded"));
 
         /* process next number */
-        if (argv[options_index][i] == ',')
+        if (optarg[i] == ',')
           i++;
       }
       break;
