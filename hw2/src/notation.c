@@ -1616,20 +1616,21 @@ void init_parse(m)
 
 /* ------------------- top routines -------------------- */
 #ifdef __STDC__
-int parse_options_2(int argc, char *argv[])
+int parse_options_3(int argc, char *argv[])
 #else
-int parse_options_2(argc, argv) int argc;
+int parse_options_3(argc, argv) int argc;
 char *argv[];
 #endif
 {
 
   int c;
   int i;
-  int digit_optind = 0;
 
   infile = stdin;
   dr->outfile = stdout;
   nb_move_to_dsp = 0;
+
+  int options_index = 0;
 
   static struct option long_options[] =
       {
@@ -1647,100 +1648,236 @@ char *argv[];
           {"version", no_argument, 0, 0},
           {0, 0, 0, 0}};
 
-  while (optind < argc)
+  /* getopt_long stores the option index here. */
+  while ((c = getopt_long(argc, argv, "asf:t:o:c:e:bd:ihv",
+                          long_options, &options_index)) != -1)
   {
-
-    /* getopt_long stores the option index here. */
-    if ((c = getopt_long(argc, argv, "asf:t:o:c:e:bd:ihv",
-                         long_options, &optind)) != -1)
+    switch (c)
     {
-      switch (c)
+    case 'f':
+      in_language = find_keyword(t_language, NBLANGUAGES,
+                                 DEFAULT_INPUT_LANGUAGE,
+                                 argv[options_index], TRUE);
+      break;
+
+    case 't': /* to langage */
+      out_language = find_keyword(t_language, NBLANGUAGES,
+                                  DEFAULT_OUTPUT_LANGUAGE,
+                                  argv[options_index], TRUE);
+      break;
+
+    case 'o': /* next arg is output file */
+      if ((dr->outfile = fopen(argv[options_index], "w+")) == NULL)
       {
-      case 'f':
-        in_language = find_keyword(t_language, NBLANGUAGES,
-                                   DEFAULT_INPUT_LANGUAGE,
-                                   argv[optind], TRUE);
-        break;
+        (void)fprintf(stderr, "can't open %s output file\n", argv[optind]);
+        (void)fprintf(stderr, "assume stdout for output\n");
+      }
+      break;
 
-      case 't': /* to langage */
-        out_language = find_keyword(t_language, NBLANGUAGES,
-                                    DEFAULT_OUTPUT_LANGUAGE,
-                                    argv[optind], TRUE);
-        break;
-
-      case 'o': /* next arg is output file */
-        if ((dr->outfile = fopen(argv[optind], "w+")) == NULL)
-        {
-          (void)fprintf(stderr, "can't open %s output file\n", argv[optind]);
-          (void)fprintf(stderr, "assume stdout for output\n");
-        }
-        break;
-
-      case 'e':
-        i = 0;
-        nb_move_to_dsp = 0;
+    case 'e':
+      i = 0;
+      nb_move_to_dsp = 0;
+      move_to_display[nb_move_to_dsp] = 0;
+      while (isdigit(argv[options_index][i] - '0'))
+      {
+        move_to_display[nb_move_to_dsp] =
+            ((int)(argv[options_index][i]) - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+        i++;
+      }
+      nb_move_to_dsp++;
+      stop_at_display = TRUE;
+      break;
+    case 'c':
+      i = 0;
+      while (isdigit(argv[options_index][i]))
+      {
         move_to_display[nb_move_to_dsp] = 0;
-        while (isdigit(argv[optind][i]))
+        while (isdigit(argv[options_index][i]))
         {
           move_to_display[nb_move_to_dsp] =
-              ((int)(argv[optind][i]) - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+              ((int)argv[options_index][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
           i++;
         }
         nb_move_to_dsp++;
-        stop_at_display = TRUE;
-        break;
-      case 'c':
-        i = 0;
-        while (isdigit(argv[optind][i]))
-        {
-          move_to_display[nb_move_to_dsp] = 0;
-          while (isdigit(argv[optind][i]))
-          {
-            move_to_display[nb_move_to_dsp] =
-                ((int)argv[optind][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
-            i++;
-          }
-          nb_move_to_dsp++;
 
-          if (nb_move_to_dsp > NB_MOVE_TO_DISP)
-            fatal((stderr, "max. number of move to display exceeded"));
+        if (nb_move_to_dsp > NB_MOVE_TO_DISP)
+          fatal((stderr, "max. number of move to display exceeded"));
 
-          /* process next number */
-          if (argv[optind][i] == ',')
-            i++;
-        }
-        break;
-      case 'a': /* algebraic output */
-        dr->output_move_format = ALGEBRAIC;
-        break;
-      case 's': /* shortened output */
-        dr->output_move_format = SHORTENED;
-        break;
-      case 'b': /* display only the board, no move */
-        dr->only_board = TRUE;
-        break;
-      case 'd': /* output driver */
-        driver = find_keyword(t_output, NB_DRIVER, DEFAULT_DRIVER,
-                              argv[optind], TRUE);
-        break;
-      case 'i': /* no headers */
-        dr->print_headers = FALSE;
-        break;
-      case 'v': /* print version */
-        /* this already done, so exit() */
-        exit(0);
-        break;
-
-      default: /* assume this is the input file */
-        break;
+        /* process next number */
+        if (argv[options_index][i] == ',')
+          i++;
       }
+      break;
+    case 'a': /* algebraic output */
+      dr->output_move_format = ALGEBRAIC;
+      break;
+    case 's': /* shortened output */
+      dr->output_move_format = SHORTENED;
+      break;
+    case 'b': /* display only the board, no move */
+      dr->only_board = TRUE;
+      break;
+    case 'd': /* output driver */
+      driver = find_keyword(t_output, NB_DRIVER, DEFAULT_DRIVER,
+                            argv[options_index], TRUE);
+      break;
+    case 'i': /* no headers */
+      dr->print_headers = FALSE;
+      break;
+    case 'v': /* print version */
+      /* this already done, so exit() */
+      exit(0);
+      break;
+
+    case '?':
+      break;
+
+    default: /* assume this is the input file */
+      break;
     }
-    else
+  }
+
+  if (optind < argc)
+  {
+    if ((infile = fopen(argv[optind], "r")) == NULL)
+      fatal((stderr, "can't open %s input file\n", argv[optind]));
+  }
+
+  return argc;
+}
+
+#ifdef __STDC__
+int parse_options_2(int argc, char *argv[])
+#else
+int parse_options_2(argc, argv) int argc;
+char *argv[];
+#endif
+{
+
+  int c;
+  int i;
+
+  infile = stdin;
+  dr->outfile = stdout;
+  nb_move_to_dsp = 0;
+
+  int options_index = 0;
+
+  char *filetoopen = "";
+
+  static struct option long_options[] =
+      {
+          {"long-algebraic", no_argument, 0, 0},
+          {"short-algebraic", no_argument, 0, 0},
+          {"input-language", required_argument, 0, 0},
+          {"output-language", required_argument, 0, 0},
+          {"output-file", required_argument, 0, 0},
+          {"show-after", required_argument, 0, 0},
+          {"end-after", required_argument, 0, 0},
+          {"board-only", no_argument, 0, 0},
+          {"driver", required_argument, 0, 0},
+          {"no-headers", no_argument, 0, 0},
+          {"help", no_argument, 0, 0},
+          {"version", no_argument, 0, 0},
+          {0, 0, 0, 0}};
+
+  /* getopt_long stores the option index here. */
+  while ((c = getopt_long(argc, argv, "asf:t:o:c:e:bd:ihv",
+                          long_options, &options_index)) != -1)
+  {
+    switch (c)
     {
-      if ((infile = fopen(argv[optind], "r")) == NULL)
-        fatal((stderr, "can't open %s input file\n", argv[optind]));
-      optind++;
+    case 'f':
+      in_language = find_keyword(t_language, NBLANGUAGES,
+                                 DEFAULT_INPUT_LANGUAGE,
+                                 argv[options_index], TRUE);
+      break;
+
+    case 't': /* to langage */
+      out_language = find_keyword(t_language, NBLANGUAGES,
+                                  DEFAULT_OUTPUT_LANGUAGE,
+                                  argv[options_index], TRUE);
+      break;
+
+    case 'o': /* next arg is output file */
+      if ((dr->outfile = fopen(argv[options_index], "w+")) == NULL)
+      {
+        (void)fprintf(stderr, "can't open %s output file\n", argv[optind]);
+        (void)fprintf(stderr, "assume stdout for output\n");
+      }
+      break;
+
+    case 'e':
+      i = 0;
+      nb_move_to_dsp = 0;
+      move_to_display[nb_move_to_dsp] = 0;
+      while (isdigit(argv[options_index][i] - '0'))
+      {
+        move_to_display[nb_move_to_dsp] =
+            ((int)(argv[options_index][i]) - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+        i++;
+      }
+      nb_move_to_dsp++;
+      stop_at_display = TRUE;
+      break;
+    case 'c':
+      i = 0;
+      while (isdigit(argv[options_index][i]))
+      {
+        move_to_display[nb_move_to_dsp] = 0;
+        while (isdigit(argv[options_index][i]))
+        {
+          move_to_display[nb_move_to_dsp] =
+              ((int)argv[options_index][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+          i++;
+        }
+        nb_move_to_dsp++;
+
+        if (nb_move_to_dsp > NB_MOVE_TO_DISP)
+          fatal((stderr, "max. number of move to display exceeded"));
+
+        /* process next number */
+        if (argv[options_index][i] == ',')
+          i++;
+      }
+      break;
+    case 'a': /* algebraic output */
+      dr->output_move_format = ALGEBRAIC;
+      break;
+    case 's': /* shortened output */
+      dr->output_move_format = SHORTENED;
+      break;
+    case 'b': /* display only the board, no move */
+      dr->only_board = TRUE;
+      break;
+    case 'd': /* output driver */
+      driver = find_keyword(t_output, NB_DRIVER, DEFAULT_DRIVER,
+                            argv[options_index], TRUE);
+      break;
+    case 'i': /* no headers */
+      dr->print_headers = FALSE;
+      break;
+    case 'v': /* print version */
+      /* this already done, so exit() */
+      exit(0);
+      break;
+
+    case '?':
+      if (strcmp(argv[options_index], "bin/notation") != 0)
+      {
+        strcpy(filetoopen, argv[options_index]);
+      }
+
+    default: /* assume this is the input file */
+      break;
     }
+
+    // else
+    // {
+    if ((infile = fopen(filetoopen, "r")) == NULL)
+      fatal((stderr, "can't open %s input file\n", filetoopen));
+    //   optind++;
+    // }
   }
 
   return argc;
@@ -1949,7 +2086,8 @@ char *argv[];
   (void)associe_traduction(&in_table, DEFAULT_INPUT_LANGUAGE);
   (void)associe_traduction(&(dr->out_table), DEFAULT_OUTPUT_LANGUAGE);
 
-  (void)parse_options_2(argc, argv);
+  (void)parse_options_3(argc, argv);
+  // (void)parse_options_2(argc, argv);
   // (void)parse_options(argc, argv);
 
   (void)associe_traduction(&in_table, in_language);

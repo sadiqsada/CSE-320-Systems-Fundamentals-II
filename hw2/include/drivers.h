@@ -6,13 +6,12 @@
 #ifndef _HEADERS_DRIVERS
 #define HEADERS_DRIVERS
 
-
-#define D_ASCII  0
-#define D_POST   1
-#define D_TEX    2
-#define D_ROFF   3
+#define D_ASCII 0
+#define D_POST 1
+#define D_TEX 2
+#define D_ROFF 3
 #define D_XCHESS 4
-#define D_GNU    5
+#define D_GNU 5
 
 #define NB_DRIVER 6
 
@@ -20,58 +19,55 @@
 #define VARIATION_IN 0
 #define VARIATION_OUT 1
 
-
-#define PS_HEADER  "lib/Header.ps"
-#define PS_FOOTER  "lib/Footer.ps"
+#define PS_HEADER "lib/Header.ps"
+#define PS_FOOTER "lib/Footer.ps"
 #define TEX_HEADER "lib/Header.tex"
-
 
 /* output buffers */
 #define TAMPON 256
 
-typedef struct {
+typedef struct
+{
 
   /* type of driver */
-  int type ;
+  int type;
 
   /* output_file */
-  FILE *outfile ;
+  FILE *outfile;
   /* these  booleans control the output format */
-  int print_move    ;  /* move numbering */
-  int print_piece   ;  /* print piece name */
-  int print_pawn    ; /* print the PAWN name */
-  int roque_alg     ; /*  roque in algebraic form Ke1g1 or O-O */
-  int print_liaison ; /* print the - or x in move output */
-  int only_board ;
-  int variation     ; /* variation level */
-  int print_headers ; /* include the header/footer file */
+  int print_move;    /* move numbering */
+  int print_piece;   /* print piece name */
+  int print_pawn;    /* print the PAWN name */
+  int roque_alg;     /*  roque in algebraic form Ke1g1 or O-O */
+  int print_liaison; /* print the - or x in move output */
+  int only_board;
+  int variation;     /* variation level */
+  int print_headers; /* include the header/footer file */
 
   /* boolean to print the coordinates in ascii output of board */
-  int coordinates   ;
-  int output_move_format ;
+  int coordinates;
+  int output_move_format;
 
-  char *out_table;	/* translation table */
+  char *out_table; /* translation table */
 
   /* procedures */
-  void (*out_init)() ;
-  void (*out_move)() ;
-  void (*out_variation)() ;
-  void (*out_text)() ;
-  void (*out_board)() ;
-  void (*out_end)() ;
+  void (*out_init)();
+  void (*out_move)();
+  void (*out_variation)();
+  void (*out_text)();
+  void (*out_board)();
+  void (*out_end)();
 
   /* temp vars  used by move buffering */
 
-  int iswhiteturn ; /*= FALSE */
-  int interrupt ; /*= FALSE */
+  int iswhiteturn; /*= FALSE */
+  int interrupt;   /*= FALSE */
 
-  char move_buffer[TAMPON]  /*= ""*/ ;
-  char white_buffer[TAMPON] /*= ""*/ ;
-  char black_buffer[TAMPON] /*= ""*/ ;
+  char move_buffer[TAMPON] /*= ""*/;
+  char white_buffer[TAMPON] /*= ""*/;
+  char black_buffer[TAMPON] /*= ""*/;
 
-
-} format ;
-
+} format;
 
 /* fonctions ----------------- */
 
