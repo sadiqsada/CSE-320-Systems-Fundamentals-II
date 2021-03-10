@@ -1720,7 +1720,7 @@ char *argv[];
       break;
     case 'd': /* output driver */
       driver = find_keyword(t_output, NB_DRIVER, DEFAULT_DRIVER,
-                            argv[options_index], TRUE);
+                            optarg, TRUE);
       break;
     case 'i': /* no headers */
       dr->print_headers = FALSE;
