@@ -1633,131 +1633,114 @@ char *argv[];
 
   static struct option long_options[] =
       {
-          {"long-algebraic", no_argument, 0, 'a'},
-          {"short-algebraic", no_argument, 0, 's'},
-          {"input-language", required_argument, 0, 'f'},
-          {"output-language", required_argument, 0, 't'},
-          {"output-file", required_argument, 0, 'o'},
-          {"show-after", required_argument, 0, 'c'},
-          {"end-after", required_argument, 0, 'e'},
-          {"board-only", no_argument, 0, 'b'},
-          {"driver", required_argument, 0, 'd'},
-          {"no-headers", no_argument, 0, 'i'},
-          {"help", no_argument, 0, 'h'},
-          {"version", no_argument, 0, 'v'},
+          {"long-algebraic", no_argument, 0, 0},
+          {"short-algebraic", no_argument, 0, 0},
+          {"input-language", required_argument, 0, 0},
+          {"output-language", required_argument, 0, 0},
+          {"output-file", required_argument, 0, 0},
+          {"show-after", required_argument, 0, 0},
+          {"end-after", required_argument, 0, 0},
+          {"board-only", no_argument, 0, 0},
+          {"driver", required_argument, 0, 0},
+          {"no-headers", no_argument, 0, 0},
+          {"help", no_argument, 0, 0},
+          {"version", no_argument, 0, 0},
           {0, 0, 0, 0}};
 
-  while (1)
+  while (optind < argc)
   {
+
     /* getopt_long stores the option index here. */
-    int option_index = 0;
-
-    c = getopt_long(argc, argv, "asf:t:o:c:e:bd:ihv",
-                    long_options, &option_index);
-
-    /* Detect the end of the options. */
-    if (c == -1)
-      break;
-
-    switch (c)
+    if ((c = getopt_long(argc, argv, "asf:t:o:c:e:bd:ihv",
+                         long_options, &optind)) != -1)
     {
-    case 0:
-      /* If this option set a flag, do nothing else now. */
-      if (long_options[option_index].flag != 0)
+      switch (c)
+      {
+      case 'f':
+        in_language = find_keyword(t_language, NBLANGUAGES,
+                                   DEFAULT_INPUT_LANGUAGE,
+                                   argv[optind], TRUE);
         break;
-      printf("option %s", long_options[option_index].name);
-      if (optarg)
-        printf(" with arg %s", optarg);
-      printf("\n");
-      break;
 
-    case 'f':
-      in_language = find_keyword(t_language, NBLANGUAGES,
-                                 DEFAULT_INPUT_LANGUAGE,
-                                 argv[option_index], TRUE);
-      break;
+      case 't': /* to langage */
+        out_language = find_keyword(t_language, NBLANGUAGES,
+                                    DEFAULT_OUTPUT_LANGUAGE,
+                                    argv[optind], TRUE);
+        break;
 
-    case 't': /* to langage */
-      out_language = find_keyword(t_language, NBLANGUAGES,
-                                  DEFAULT_OUTPUT_LANGUAGE,
-                                  argv[option_index], TRUE);
-      break;
+      case 'o': /* next arg is output file */
+        if ((dr->outfile = fopen(argv[optind], "w+")) == NULL)
+        {
+          (void)fprintf(stderr, "can't open %s output file\n", argv[optind]);
+          (void)fprintf(stderr, "assume stdout for output\n");
+        }
+        break;
 
-    case 'o': /* next arg is output file */
-      if ((dr->outfile = fopen(argv[option_index], "w+")) == NULL)
-      {
-        (void)fprintf(stderr, "can't open %s output file\n", argv[option_index]);
-        (void)fprintf(stderr, "assume stdout for output\n");
-      }
-
-    case 'e':
-      i = 0;
-      nb_move_to_dsp = 0;
-      move_to_display[nb_move_to_dsp] = 0;
-      while (isdigit(argv[option_index][i]))
-      {
-        move_to_display[nb_move_to_dsp] =
-            ((int)argv[option_index][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
-        i++;
-      }
-      nb_move_to_dsp++;
-      stop_at_display = TRUE;
-      break;
-    case 'c':
-      i = 0;
-      while (isdigit(argv[option_index][i]))
-      {
+      case 'e':
+        i = 0;
+        nb_move_to_dsp = 0;
         move_to_display[nb_move_to_dsp] = 0;
-        while (isdigit(argv[option_index][i]))
+        while (isdigit(argv[optind][i]))
         {
           move_to_display[nb_move_to_dsp] =
-              ((int)argv[option_index][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+              ((int)(argv[optind][i]) - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
           i++;
         }
         nb_move_to_dsp++;
+        stop_at_display = TRUE;
+        break;
+      case 'c':
+        i = 0;
+        while (isdigit(argv[optind][i]))
+        {
+          move_to_display[nb_move_to_dsp] = 0;
+          while (isdigit(argv[optind][i]))
+          {
+            move_to_display[nb_move_to_dsp] =
+                ((int)argv[optind][i] - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+            i++;
+          }
+          nb_move_to_dsp++;
 
-        if (nb_move_to_dsp > NB_MOVE_TO_DISP)
-          fatal((stderr, "max. number of move to display exceeded"));
+          if (nb_move_to_dsp > NB_MOVE_TO_DISP)
+            fatal((stderr, "max. number of move to display exceeded"));
 
-        /* process next number */
-        if (argv[option_index][i] == ',')
-          i++;
+          /* process next number */
+          if (argv[optind][i] == ',')
+            i++;
+        }
+        break;
+      case 'a': /* algebraic output */
+        dr->output_move_format = ALGEBRAIC;
+        break;
+      case 's': /* shortened output */
+        dr->output_move_format = SHORTENED;
+        break;
+      case 'b': /* display only the board, no move */
+        dr->only_board = TRUE;
+        break;
+      case 'd': /* output driver */
+        driver = find_keyword(t_output, NB_DRIVER, DEFAULT_DRIVER,
+                              argv[optind], TRUE);
+        break;
+      case 'i': /* no headers */
+        dr->print_headers = FALSE;
+        break;
+      case 'v': /* print version */
+        /* this already done, so exit() */
+        exit(0);
+        break;
+
+      default: /* assume this is the input file */
+        break;
       }
-      break;
-    case 'a': /* algebraic output */
-      dr->output_move_format = ALGEBRAIC;
-      break;
-    case 's': /* shortened output */
-      dr->output_move_format = SHORTENED;
-      break;
-    case 'b': /* display only the board, no move */
-      dr->only_board = TRUE;
-      break;
-    case 'd': /* output driver */
-      driver = find_keyword(t_output, NB_DRIVER, DEFAULT_DRIVER,
-                            argv[option_index], TRUE);
-      break;
-    case 'i': /* no headers */
-      dr->print_headers = FALSE;
-      break;
-    case 'v': /* print version */
-      /* this already done, so exit() */
-      exit(0);
-      break;
-
-    default: /* assume this is the input file */
-      if ((infile = fopen(argv[option_index], "r")) == NULL)
-        fatal((stderr, "can't open %s input file\n", argv[option_index]));
     }
-  }
-
-  /* Print any remaining command line arguments (not options). */
-  if (optind < argc)
-  {
-    printf("non-option ARGV-elements: ");
-    while (optind < argc)
-      printf("%s ", argv[optind++]);
-    putchar('\n');
+    else
+    {
+      if ((infile = fopen(argv[optind], "r")) == NULL)
+        fatal((stderr, "can't open %s input file\n", argv[optind]));
+      optind++;
+    }
   }
 
   return argc;
@@ -1966,8 +1949,8 @@ char *argv[];
   (void)associe_traduction(&in_table, DEFAULT_INPUT_LANGUAGE);
   (void)associe_traduction(&(dr->out_table), DEFAULT_OUTPUT_LANGUAGE);
 
-  // (void)parse_options_2(argc, argv);
-  (void)parse_options(argc, argv);
+  (void)parse_options_2(argc, argv);
+  // (void)parse_options(argc, argv);
 
   (void)associe_traduction(&in_table, in_language);
   (void)associe_traduction(&(dr->out_table), out_language);
