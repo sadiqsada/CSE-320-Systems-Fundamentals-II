@@ -1634,18 +1634,18 @@ char *argv[];
 
   static struct option long_options[] =
       {
-          {"long-algebraic", no_argument, 0, 0},
-          {"short-algebraic", no_argument, 0, 0},
-          {"input-language", required_argument, 0, 0},
-          {"output-language", required_argument, 0, 0},
-          {"output-file", required_argument, 0, 0},
-          {"show-after", required_argument, 0, 0},
-          {"end-after", required_argument, 0, 0},
-          {"board-only", no_argument, 0, 0},
-          {"driver", required_argument, 0, 0},
-          {"no-headers", no_argument, 0, 0},
-          {"help", no_argument, 0, 0},
-          {"version", no_argument, 0, 0},
+          {"long-algebraic", no_argument, 0, 'a'},
+          {"short-algebraic", no_argument, 0, 's'},
+          {"input-language", required_argument, 0, 'f'},
+          {"output-language", required_argument, 0, 't'},
+          {"output-file", required_argument, 0, 'o'},
+          {"show-after", required_argument, 0, 'c'},
+          {"end-after", required_argument, 0, 'e'},
+          {"board-only", no_argument, 0, 'b'},
+          {"driver", required_argument, 0, 'd'},
+          {"no-headers", no_argument, 0, 'i'},
+          {"help", no_argument, 0, 'h'},
+          {"version", no_argument, 0, 'v'},
           {0, 0, 0, 0}};
 
   /* getopt_long stores the option index here. */
@@ -1678,15 +1678,16 @@ char *argv[];
       i = 0;
       nb_move_to_dsp = 0;
       move_to_display[nb_move_to_dsp] = 0;
-      while (isdigit(argv[options_index][i] - '0'))
+      while (isdigit(optarg[i]))
       {
         move_to_display[nb_move_to_dsp] =
-            ((int)(argv[options_index][i]) - (int)'0') + move_to_display[nb_move_to_dsp] * 10;
+            (optarg[i] - '0') + move_to_display[nb_move_to_dsp] * 10;
         i++;
       }
       nb_move_to_dsp++;
       stop_at_display = TRUE;
       break;
+
     case 'c':
       i = 0;
       while (isdigit(argv[options_index][i]))
