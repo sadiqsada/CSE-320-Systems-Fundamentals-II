@@ -1540,7 +1540,6 @@ int parse_roque(token) char *token;
     /*(void) fprintf(stderr,"ROQUE\n");*/
     return (TRUE);
   }
-
   return (FALSE);
 }
 
@@ -1572,6 +1571,7 @@ int parse_move(token) char *token;
       correcte = TRUE;
     i++;
   }
+
   if (erreursyntaxe)
   {
     (void)fprintf(stderr, "no comprende, senor: %s\n", token);
@@ -1831,6 +1831,7 @@ char *argv[];
 
   /* allocation of move descriptor */
   m = new_move();
+  depl *startingm = m;
   init_move(m);
   m->type = VOID;
 
@@ -1860,13 +1861,14 @@ char *argv[];
   /* terminates output files */
   output_end(dr);
   yylex_destroy();
-  // free(m);
-  // free(tos);
-  // free(theplay);
 
   /* close files */
   close_files();
-
+  free(tos);
+  free(dr);
+  free(theplay);
+  free_move_list(startingm);
+  free(startingm);
   /* exit properly */
   return 0;
 }
