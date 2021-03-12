@@ -1749,10 +1749,18 @@ char *argv[];
     }
   }
 
+  if (optind + 1 != argc)
+  {
+    fatal((stderr, "can't open %s input file\n", argv[optind + 1]));
+    exit(1);
+  }
+
   if (optind < argc)
   {
     if ((infile = fopen(argv[optind], "r")) == NULL)
+    {
       fatal((stderr, "can't open %s input file\n", argv[optind]));
+    }
   }
 
   return argc;
