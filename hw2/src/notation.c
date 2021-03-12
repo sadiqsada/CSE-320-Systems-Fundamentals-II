@@ -1742,10 +1742,9 @@ char *argv[];
       exit(0);
       break;
 
-    case '?':
-      break;
-
     default: /* assume this is the input file */
+      close_files();
+      exit(1);
       break;
     }
   }
