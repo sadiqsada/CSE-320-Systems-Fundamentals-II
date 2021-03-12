@@ -356,7 +356,12 @@ int warning;                                                             /* do w
 
   /* we failed to find the keyword */
   if (warning)
-    (void)fprintf(stderr, "unknow keyword %s in this context\n", key);
+  {
+    (void)fprintf(stderr, "unknown keyword %s in this context\n", key);
+    yylex_destroy();
+    close_files();
+    exit(1);
+  }
   return (defaut);
 }
 
