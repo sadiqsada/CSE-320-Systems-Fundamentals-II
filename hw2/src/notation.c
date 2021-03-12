@@ -530,7 +530,6 @@ static depl *add_variation(mo)
     free(m);
     free(tos);
     close_files();
-    free(dr);
     exit(1);
   }
 
@@ -1765,6 +1764,7 @@ void close_files()
     (void)fclose(infile);
   if (dr->outfile != stdout)
     (void)fclose(dr->outfile);
+  free(dr);
 }
 
 #ifdef __STDC__
@@ -1873,7 +1873,6 @@ char *argv[];
   /* close files */
   close_files();
   free(tos);
-  free(dr);
   free(theplay);
   free_move_list(startingm);
   free(startingm);
