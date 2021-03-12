@@ -521,6 +521,7 @@ static depl *add_variation(mo)
 {
   if (mo == NULL || mo->prev == NULL)
   {
+    yylex_destroy();
     exit(1);
   }
 
