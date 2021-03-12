@@ -522,6 +522,15 @@ static depl *add_variation(mo)
   if (mo == NULL || mo->prev == NULL)
   {
     yylex_destroy();
+    for (int i = 0; i <= dr->variation; i++)
+    {
+      free(stack[i].b);
+    }
+    free(theplay);
+    free(m);
+    free(tos);
+    close_files();
+    free(dr);
     exit(1);
   }
 
@@ -683,7 +692,6 @@ depl *m;
     break;
   }
 }
-
 /* variation procedures == stack manipulation */
 
 #ifdef __STDC__
