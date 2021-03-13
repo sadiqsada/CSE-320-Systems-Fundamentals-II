@@ -1751,6 +1751,7 @@ char *argv[];
         while ((c = getc(fhelp)) != EOF)
           (void)fputc(c, stderr);
         (void)fclose(fhelp);
+        free(dr);
         exit(0);
       }
       break;
