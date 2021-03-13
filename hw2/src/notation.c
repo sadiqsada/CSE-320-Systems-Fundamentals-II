@@ -1644,6 +1644,8 @@ char *argv[];
   dr->outfile = stdout;
   nb_move_to_dsp = 0;
 
+  char chaine[MAXTOKLEN];
+
   int options_index = 0;
   int foundinput = 0;
 
@@ -1740,6 +1742,19 @@ char *argv[];
     case 'i': /* no headers */
       dr->print_headers = FALSE;
       break;
+    case 'h':
+      (void)strcpy(chaine, LIB_DIR);
+      if ((fhelp = fopen(strcat(chaine, HELP_FILE), "r")) == NULL)
+        fatal((stderr, "Can't find help file.\n"));
+      else
+      {
+        while ((c = getc(fhelp)) != EOF)
+          (void)fputc(c, stderr);
+        (void)fclose(fhelp);
+        exit(0);
+      }
+      break;
+
     case 'v': /* print version */
       /* this already done, so exit() */
       exit(0);
