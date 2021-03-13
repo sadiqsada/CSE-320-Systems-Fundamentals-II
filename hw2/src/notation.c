@@ -358,9 +358,6 @@ int warning;                                                             /* do w
   if (warning)
   {
     (void)fprintf(stderr, "unknown keyword %s in this context\n", key);
-    yylex_destroy();
-    close_files();
-    exit(1);
   }
   return (defaut);
 }
@@ -1226,8 +1223,13 @@ int execute_move()
   {
     (void)fprintf(dr->outfile, "\nLast position encountered:\n");
     output_board(dr, tos);
+    yylex_destroy();
+    free_move_list(theplay->chain);
+    free(theplay->chain);
+    free(tos);
+    free(theplay);
     close_files();
-    exit(0);
+    exit(1);
   }
 
   /* do we need to display the move ? */
@@ -1643,6 +1645,7 @@ char *argv[];
   nb_move_to_dsp = 0;
 
   int options_index = 0;
+  int foundinput = 0;
 
   static struct option long_options[] =
       {
@@ -1749,18 +1752,15 @@ char *argv[];
     }
   }
 
-  if (optind + 1 != argc)
-  {
-    fatal((stderr, "can't open %s input file\n", argv[optind + 1]));
-    exit(1);
-  }
-
   if (optind < argc)
   {
+    if (foundinput)
+      fatal((stderr, "cannot open %s input file\n", argv[optind]));
     if ((infile = fopen(argv[optind], "r")) == NULL)
     {
       fatal((stderr, "can't open %s input file\n", argv[optind]));
     }
+    foundinput = 1;
   }
 
   return argc;
@@ -1843,7 +1843,9 @@ char *argv[];
   output_init(dr);
 
   if (error_flag)
+  {
     fatal((stderr, "\nToo many errors"));
+  }
 
   /* allocation of board descriptor */
   tos = new_board();
