@@ -28,9 +28,27 @@
 #define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE(((char *)(bp)-DSIZE)))
 
 // finds next multiple of 16 for num input
-int findMultiple(int num)
+int find_multiple(int num)
 {
     return (num % 16 != 0) ? num + (16 - (num % 16)) : num;
+}
+
+// finds the appropriate index in free list to search
+int find_free_list_index(size_t size)
+{
+    int answer = 0;
+    int pow = 32;
+    int target = 32 * 32;
+    while (pow <= target)
+    {
+        if (size <= pow)
+        {
+            return answer;
+        }
+        pow = pow * 2;
+        answer = answer + 1;
+    }
+    return 7;
 }
 
 void *sf_malloc(size_t size)
@@ -53,10 +71,11 @@ void *sf_malloc(size_t size)
     {
         // allocate block of size x + 8 + (padding)
         newSize = size + 8;
-        newSize = findMultiple(newSize);
+        newSize = find_multiple(newSize);
     }
 
-    // search free list
+    // determine the index of the free list to be searched
+    int index = find_free_list_index(size);
 
     return NULL;
 }
