@@ -37,6 +37,8 @@ int main(int argc, char const *argv[])
     block->body.links.next = startingBlock;
     block->body.links.prev = startingBlock;
 
+    sf_malloc(32);
+
     sf_show_heap();
     // double *ptr = sf_malloc(sizeof(double));
 
