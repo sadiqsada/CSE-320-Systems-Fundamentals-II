@@ -59,6 +59,38 @@ int find_free_list_index(size_t size)
     return 7;
 }
 
+void initializeHeap()
+{
+    // get page of memory
+    sf_mem_grow();
+
+    // initialize free lists
+    for (int i = 0; i < NUM_FREE_LISTS; i++)
+    {
+        sf_free_list_heads[i].body.links.next = &sf_free_list_heads[i];
+        sf_free_list_heads[i].body.links.prev = &sf_free_list_heads[i];
+    }
+
+    // initialize prologue and epilogue
+    sf_block *block = (struct sf_block *)(sf_mem_start() + 8);
+    block->header = 32 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+
+    block = (struct sf_block *)(sf_mem_end() - 8);
+    block->header = 0 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+
+    // put rest of the memory in wilderness block
+    block = (struct sf_block *)(sf_mem_start() + 40);
+    (block->header) = 8144 + PREV_BLOCK_ALLOCATED;
+    sf_footer *blockFooter = (sf_footer *)(block + 8136);
+    *blockFooter = block->header;
+
+    sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[7]);
+    startingBlock->body.links.next = block;
+    startingBlock->body.links.prev = block;
+    block->body.links.next = startingBlock;
+    block->body.links.prev = startingBlock;
+}
+
 // insert a block of size (size)
 void insert_free_block(size_t size, sf_block *block)
 {
@@ -141,33 +173,7 @@ void *sf_malloc(size_t size)
     if (!firstMallocDone)
     {
         firstMallocDone = 1;
-
-        // get page of memory
-        sf_mem_grow();
-
-        // initialize free lists
-        for (int i = 0; i < NUM_FREE_LISTS; i++)
-        {
-            sf_free_list_heads[i].body.links.next = &sf_free_list_heads[i];
-            sf_free_list_heads[i].body.links.prev = &sf_free_list_heads[i];
-        }
-
-        // initialize prologue and epilogue
-        sf_block *block = (struct sf_block *)(sf_mem_start() + 8);
-        block->header = 32 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
-
-        block = (struct sf_block *)(sf_mem_end() - 8);
-        block->header = 0 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
-
-        // put rest of the memory in wilderness block
-        block = (struct sf_block *)(sf_mem_start() + 40);
-        (block->header) = 8144 + PREV_BLOCK_ALLOCATED;
-
-        sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[7]);
-        startingBlock->body.links.next = block;
-        startingBlock->body.links.prev = block;
-        block->body.links.next = startingBlock;
-        block->body.links.prev = startingBlock;
+        initializeHeap();
     }
     // if size is 0, return null
     if (size == 0)
