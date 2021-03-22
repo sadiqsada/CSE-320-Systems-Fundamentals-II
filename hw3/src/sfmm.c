@@ -8,15 +8,14 @@
 #include "debug.h"
 #include "sfmm.h"
 
-#define WSIZE 2
-#define DSIZE 4
-
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
-#define PACK(size, alloc) ((size) | (alloc))
+#define HSIZE // header size = 8
+#define WSize // word size = 2
 
 #define GET(p) (*(unsigned int *))(p))
 #define PUT(p, val) (*(unsigned int *)(p)) = (val))
+#define PACK(size, al, pal) ((size) | (al) | (pal << 1))
 
 #define GET_SIZE(p) (GET(p) & ~0xf)
 #define GET_ALLOC(p) (GET(p) & 0x1)
@@ -25,8 +24,16 @@
 #define HDRP(bp) ((char *)(bp)-WSIZE)
 #define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE
 
+#define NEXT_BLK(bp) (bp->body.links.next)
+#define PREV_BLK(bp) (bp->body.links.prev)
+
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp)-WSIZE)))
 #define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE(((char *)(bp)-DSIZE)))
+
+#define SET_NEXT_BLK(bp, next) (NEXT_BLK(bp) = next)
+#define SET_PREV_BLK(bp, prev) (PREV_BLK(bp) = prev)
+
+int firstMallocDone = 0; // tracks whether a malloc is the first one
 
 // finds next multiple of 16 for num input
 size_t find_multiple(int num)
@@ -75,7 +82,7 @@ void insert_free_block(size_t size, sf_block *block)
 }
 
 // allocates a block at index (index) of size (size)
-sf_block *allocateBlock(int index, size_t size)
+sf_block *allocate_block(int index, size_t size)
 {
     while (index < 8)
     {
@@ -92,19 +99,33 @@ sf_block *allocateBlock(int index, size_t size)
             if (iteratorSize >= inputSize)
             {
                 // found block to allocate to
-                size_t remSize = iteratorSize - inputSize;
+                // size_t remSize = iteratorSize - inputSize;
 
-                sf_header *header = (&((iteratorBlock->body.links.prev)->header));
+                sf_header *prevHeader = (&((PREV_BLK(iteratorBlock))->header));
 
-                int prevAlloc = (*header) & 0x2;
+                int prevAlloc = (*prevHeader) & 0x1;
 
                 *(iteratorHeader) = inputSize + THIS_BLOCK_ALLOCATED + prevAlloc;
 
-                if (remSize >= 32)
+                int padding = 0;
+
+                if (inputSize % 16 == 0)
                 {
-                    sf_block *address = (struct sf_block *)(iteratorBlock + inputSize);
-                    insert_free_block(remSize, address);
+                    padding = 8;
                 }
+
+                sf_block *address = (struct sf_block *)(iteratorBlock + inputSize + padding);
+
+                printf("Address: %p\n", address);
+
+                // SET_NEXT_BLK(PREV_BLK(iteratorBlock), address);
+
+                // SET_PREV_BLK(address, PREV_BLK(iteratorBlock));
+
+                // if (find_multiple(remSize) >= 32)
+                // {
+                //     insert_free_block(remSize, address);
+                // }
                 return iteratorBlock;
             }
             iteratorBlock = iteratorBlock->body.links.next;
@@ -116,6 +137,38 @@ sf_block *allocateBlock(int index, size_t size)
 
 void *sf_malloc(size_t size)
 {
+    // this is the first malloc
+    if (!firstMallocDone)
+    {
+        firstMallocDone = 1;
+
+        // get page of memory
+        sf_mem_grow();
+
+        // initialize free lists
+        for (int i = 0; i < NUM_FREE_LISTS; i++)
+        {
+            sf_free_list_heads[i].body.links.next = &sf_free_list_heads[i];
+            sf_free_list_heads[i].body.links.prev = &sf_free_list_heads[i];
+        }
+
+        // initialize prologue and epilogue
+        sf_block *block = (struct sf_block *)(sf_mem_start() + 8);
+        block->header = 32 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+
+        block = (struct sf_block *)(sf_mem_end() - 8);
+        block->header = 0 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+
+        // put rest of the memory in wilderness block
+        block = (struct sf_block *)(sf_mem_start() + 40);
+        (block->header) = 8144 + PREV_BLOCK_ALLOCATED;
+
+        sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[7]);
+        startingBlock->body.links.next = block;
+        startingBlock->body.links.prev = block;
+        block->body.links.next = startingBlock;
+        block->body.links.prev = startingBlock;
+    }
     // if size is 0, return null
     if (size == 0)
         return NULL;
@@ -140,7 +193,7 @@ void *sf_malloc(size_t size)
     // determine the index of the free list to be searched
     int index = find_free_list_index(newSize);
     // search the list for an appropriate free block
-    sf_block *foundBlock = allocateBlock(index, newSize);
+    sf_block *foundBlock = allocate_block(index, newSize);
 
     return foundBlock;
 }
