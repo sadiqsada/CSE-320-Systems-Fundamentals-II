@@ -10,11 +10,11 @@
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
-#define HSIZE // header size = 8
-#define WSize // word size = 2
+#define HSIZE 8 // header size = 8
+#define WSIZE 8 // word size = 2
 
-#define GET(p) (*(unsigned int *))(p))
-#define PUT(p, val) (*(unsigned int *)(p)) = (val))
+#define GET(p) (*(unsigned int *)(p))
+#define PUT(p, val) (*(unsigned int *)(p) = (val))
 #define PACK(size, al, pal) ((size) | (al) | (pal << 1))
 
 #define GET_SIZE(p) (GET(p) & ~0xf)
@@ -22,13 +22,13 @@
 #define GET_PREV_ALLOC(p) (GET(p) & 0x2)
 
 #define HDRP(bp) ((char *)(bp)-WSIZE)
-#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE
+#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - WSIZE)
 
 #define NEXT_BLK(bp) (bp->body.links.next)
 #define PREV_BLK(bp) (bp->body.links.prev)
 
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp)-WSIZE)))
-#define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE(((char *)(bp)-DSIZE)))
+#define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE((char *)(bp)-WSIZE))
 
 #define SET_NEXT_BLK(bp, next) (NEXT_BLK(bp) = next)
 #define SET_PREV_BLK(bp, prev) (PREV_BLK(bp) = prev)
@@ -59,38 +59,6 @@ int find_free_list_index(size_t size)
     return 7;
 }
 
-void initializeHeap()
-{
-    // get page of memory
-    sf_mem_grow();
-
-    // initialize free lists
-    for (int i = 0; i < NUM_FREE_LISTS; i++)
-    {
-        sf_free_list_heads[i].body.links.next = &sf_free_list_heads[i];
-        sf_free_list_heads[i].body.links.prev = &sf_free_list_heads[i];
-    }
-
-    // initialize prologue and epilogue
-    sf_block *block = (struct sf_block *)(sf_mem_start() + 8);
-    block->header = 32 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
-
-    block = (struct sf_block *)(sf_mem_end() - 8);
-    block->header = 0 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
-
-    // put rest of the memory in wilderness block
-    block = (struct sf_block *)(sf_mem_start() + 40);
-    (block->header) = 8144 + PREV_BLOCK_ALLOCATED;
-    sf_footer *blockFooter = (sf_footer *)(block + 8136);
-    *blockFooter = block->header;
-
-    sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[7]);
-    startingBlock->body.links.next = block;
-    startingBlock->body.links.prev = block;
-    block->body.links.next = startingBlock;
-    block->body.links.prev = startingBlock;
-}
-
 // insert a block of size (size)
 void insert_free_block(size_t size, sf_block *block)
 {
@@ -113,6 +81,30 @@ void insert_free_block(size_t size, sf_block *block)
     startingBlock->body.links.next = block;
 }
 
+void initializeHeap()
+{
+    // get page of memory
+    sf_mem_grow();
+
+    // initialize free lists
+    for (int i = 0; i < NUM_FREE_LISTS; i++)
+    {
+        sf_free_list_heads[i].body.links.next = &sf_free_list_heads[i];
+        sf_free_list_heads[i].body.links.prev = &sf_free_list_heads[i];
+    }
+
+    // initialize prologue and epilogue
+    sf_block *block = (struct sf_block *)(sf_mem_start() + 8);
+    block->header = 32 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+
+    block = (struct sf_block *)(sf_mem_end() - 8);
+    block->header = 0 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+
+    // put rest of the memory in wilderness block
+    block = (struct sf_block *)(sf_mem_start() + 40);
+    insert_free_block(8144, block);
+}
+
 // allocates a block at index (index) of size (size)
 sf_block *allocate_block(int index, size_t size)
 {
@@ -131,7 +123,7 @@ sf_block *allocate_block(int index, size_t size)
             if (iteratorSize >= inputSize)
             {
                 // found block to allocate to
-                // size_t remSize = iteratorSize - inputSize;
+                size_t remSize = iteratorSize - inputSize;
 
                 sf_header *prevHeader = (&((PREV_BLK(iteratorBlock))->header));
 
@@ -146,18 +138,18 @@ sf_block *allocate_block(int index, size_t size)
                     padding = 8;
                 }
 
-                sf_block *address = (struct sf_block *)(iteratorBlock + inputSize + padding);
+                if (find_multiple(remSize) >= 32)
+                {
+                    sf_block *address = (struct sf_block *)(iteratorBlock + inputSize + padding);
 
-                printf("Address: %p\n", address);
+                    insert_free_block(find_multiple(remSize), address);
 
-                // SET_NEXT_BLK(PREV_BLK(iteratorBlock), address);
+                    sf_block *prev = (struct sf_block *)(iteratorBlock->body.links.prev);
+                    sf_block *next = (struct sf_block *)(iteratorBlock->body.links.next);
 
-                // SET_PREV_BLK(address, PREV_BLK(iteratorBlock));
-
-                // if (find_multiple(remSize) >= 32)
-                // {
-                //     insert_free_block(remSize, address);
-                // }
+                    prev->body.links.next = next;
+                    next->body.links.prev = prev;
+                }
                 return iteratorBlock;
             }
             iteratorBlock = iteratorBlock->body.links.next;
@@ -204,8 +196,86 @@ void *sf_malloc(size_t size)
     return foundBlock;
 }
 
+int validatePointer(void *pp)
+{
+    // check if null
+    if (pp == NULL)
+    {
+        return 1;
+    }
+
+    // check if divisible by 16
+    if (GET(pp) % 16 != 0)
+    {
+        return 1;
+    }
+
+    // size of the block is not a multiple of 16
+    if (GET_SIZE(pp) % 16 != 0)
+    {
+        return 1;
+    }
+
+    // size of block is less than minimum block size
+    if (GET_SIZE(pp) < 32)
+    {
+        return 1;
+    }
+
+    // allocated bit in the header is 0
+    if (GET_ALLOC(pp) == 0)
+    {
+        return 1;
+    }
+
+    // some or all of the block lies outside of the current heap
+
+    // The header of the next block lies outside the current heap bounds
+
+    // the prev_alloc bit does not match alloc of prev block
+
+    return 0;
+}
+
+void *coalesce(void *bp)
+{
+    size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
+    size_t size = GET_SIZE(HDRP(bp));
+    if (prev_alloc && next_alloc)
+    { /* Case 1 */
+        return bp;
+    }
+    else if (prev_alloc && !next_alloc)
+    { /* Case 2 */
+        size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
+        PUT(HDRP(bp), PACK(size, 0, 0));
+        PUT(FTRP(bp), PACK(size, 0, 0));
+    }
+    else if (!prev_alloc && next_alloc)
+    { /* Case 3 */
+        size += GET_SIZE(HDRP(PREV_BLKP(bp)));
+        PUT(FTRP(bp), PACK(size, 0, 0));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, 0));
+        bp = PREV_BLKP(bp);
+    }
+    else
+    { /* Case 4 */
+        size += GET_SIZE(HDRP(PREV_BLKP(bp))) +
+                GET_SIZE(FTRP(NEXT_BLKP(bp)));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, 0));
+        PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0, 0));
+        bp = PREV_BLKP(bp);
+    }
+    return bp;
+}
+
 void sf_free(void *pp)
 {
+    int validationSuccess = validatePointer(pp);
+    if (validationSuccess)
+        return;
+    coalesce(pp);
     return;
 }
 
