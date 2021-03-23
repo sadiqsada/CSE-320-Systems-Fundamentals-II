@@ -65,11 +65,11 @@ void insert_free_block(size_t size, sf_block *block)
     int index = find_free_list_index(size);
 
     // size = size, prev = 1, alloc = 0
-    sf_header *blockHeader = (sf_header *)(&(block->header));
+    sf_header *blockHeader = (sf_header *)((void *)(block));
     *blockHeader = size + PREV_BLOCK_ALLOCATED;
 
-    sf_footer *blockFooter = (sf_footer *)(&(block->header) + size - 8);
-    *blockFooter = *blockHeader;
+    sf_footer *blockFooter = (sf_footer *)((void *)(block) + size - 8);
+    *blockFooter = size + PREV_BLOCK_ALLOCATED;
 
     // new free block should be inserted to the front of the list
 
@@ -94,53 +94,51 @@ void initializeHeap()
     }
 
     // initialize prologue and epilogue
-    sf_block *block = (struct sf_block *)(sf_mem_start() + 8);
-    block->header = 32 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
-
-    block = (struct sf_block *)(sf_mem_end() - 8);
-    block->header = 0 + THIS_BLOCK_ALLOCATED + PREV_BLOCK_ALLOCATED;
+    PUT((void *)(sf_mem_start() + 8), PACK(32, 1, 1));
+    PUT((void *)(sf_mem_end() - 8), PACK(0, 1, 1));
 
     // put rest of the memory in wilderness block
-    block = (struct sf_block *)(sf_mem_start() + 40);
+    sf_block *block = (struct sf_block *)(sf_mem_start() + 40);
     insert_free_block(8144, block);
 }
 
 // allocates a block at index (index) of size (size)
-sf_block *allocate_block(int index, size_t size)
+void *allocate_block(int index, size_t size)
 {
     while (index < 8)
     {
         // find the address of the block to be searched first
         sf_block *startingBlock = (sf_block *)(&sf_free_list_heads[index]);
 
-        size_t inputSize = size; // redundant
-
         sf_block *iteratorBlock = startingBlock->body.links.next;
         while (iteratorBlock != startingBlock)
         {
-            sf_header *iteratorHeader = (sf_header *)(&(iteratorBlock->header));
-            size_t iteratorSize = *(iteratorHeader) & ~0xf;
-            if (iteratorSize >= inputSize)
+            sf_header *iteratorHeader = (sf_header *)(iteratorBlock);
+            size_t iteratorSize = GET_SIZE(iteratorBlock);
+            if (iteratorSize >= size)
             {
                 // found block to allocate to
-                size_t remSize = iteratorSize - inputSize;
+                size_t remSize = iteratorSize - size;
 
-                sf_header *prevHeader = (&((PREV_BLK(iteratorBlock))->header));
+                sf_footer *prevFooter = (sf_footer *)(iteratorBlock - 8);
 
-                int prevAlloc = (*prevHeader) & 0x1;
+                int prevAlloc = GET_PREV_ALLOC(prevFooter);
 
-                *(iteratorHeader) = inputSize + THIS_BLOCK_ALLOCATED + prevAlloc;
+                if (prevAlloc != 1)
+                    prevAlloc = 0;
+
+                *(iteratorHeader) = size + THIS_BLOCK_ALLOCATED + prevAlloc;
 
                 int padding = 0;
 
-                if (inputSize % 16 == 0)
+                if (size % 16 == 0)
                 {
                     padding = 8;
                 }
 
                 if (find_multiple(remSize) >= 32)
                 {
-                    sf_block *address = (struct sf_block *)(iteratorBlock + inputSize + padding);
+                    sf_block *address = (struct sf_block *)(iteratorBlock + size + padding);
 
                     insert_free_block(find_multiple(remSize), address);
 
@@ -150,12 +148,13 @@ sf_block *allocate_block(int index, size_t size)
                     prev->body.links.next = next;
                     next->body.links.prev = prev;
                 }
-                return iteratorBlock;
+                return &(iteratorBlock->body.payload);
             }
             iteratorBlock = iteratorBlock->body.links.next;
         }
         index++;
     }
+
     return NULL;
 }
 
@@ -191,7 +190,7 @@ void *sf_malloc(size_t size)
     // determine the index of the free list to be searched
     int index = find_free_list_index(newSize);
     // search the list for an appropriate free block
-    sf_block *foundBlock = allocate_block(index, newSize);
+    char *foundBlock = allocate_block(index, newSize);
 
     return foundBlock;
 }
@@ -205,10 +204,10 @@ int validatePointer(void *pp)
     }
 
     // check if divisible by 16
-    if (GET(pp) % 16 != 0)
-    {
-        return 1;
-    }
+    // if (GET(pp) % 16 != 0)
+    // {
+    //     return 1;
+    // }
 
     // size of the block is not a multiple of 16
     if (GET_SIZE(pp) % 16 != 0)
@@ -275,7 +274,15 @@ void sf_free(void *pp)
     int validationSuccess = validatePointer(pp);
     if (validationSuccess)
         return;
+
+    size_t size = GET_SIZE(HDRP(pp));
+    PUT(HDRP(pp), PACK(size, 0, 0));
+    PUT(HDRP(pp), PACK(size, 0, 0));
+
     coalesce(pp);
+
+    sf_block *block = (sf_block *)(HDRP(pp));
+    insert_free_block(GET_SIZE(HDRP(pp)), block);
     return;
 }
 
