@@ -66,8 +66,6 @@ void insert_free_block(size_t size, sf_block *block)
 {
     int index = find_free_list_index(size);
 
-    printf("value1: %u\n", GET(block) % 8);
-
     // size = size, prev = 1, alloc = 0
     sf_header *blockHeader = (sf_header *)(&(block->header));
     PUT(blockHeader, PACK(size, 0, 1));
@@ -114,8 +112,6 @@ void *place(int index, size_t size)
 
         sf_block *iteratorBlock = (sf_block *)((startingBlock->body.links.next));
 
-        // void *p = iteratorBlock;
-        // printf("%d %p\n", GET(p) % 8, p);
         while (iteratorBlock != startingBlock)
         {
             sf_header *iteratorHeader = (sf_header *)(&(iteratorBlock->header));
@@ -251,9 +247,7 @@ void *sf_malloc(size_t size)
 
 int validatePointer(void *pp)
 {
-    // void *p = pp;
-    // printf("%d %p\n", GET(p) % 16, p);
-    // check if null
+
     if (pp == NULL)
     {
         return 1;
@@ -284,10 +278,32 @@ int validatePointer(void *pp)
     }
 
     // some or all of the block lies outside of the current heap
+    void *start = pp - 8;
+    void *end = GET_SIZE(HDRP(pp)) + pp - 8;
+
+    void *heapStart = sf_mem_start() + 40;
+    void *heapEnd = sf_mem_end() - 8;
+
+    if (start < heapStart || start > heapEnd || end < heapStart || end > heapEnd)
+    {
+        return 1;
+    }
 
     // The header of the next block lies outside the current heap bounds
+    void *nextBlockHdr = HDRP(NEXT_BLKP(pp));
+
+    if (nextBlockHdr < heapStart || nextBlockHdr > heapEnd)
+    {
+        return 1;
+    }
 
     // the prev_alloc bit does not match alloc of prev block
+    size_t allocPrev = GET_ALLOC(HDRP(PREV_BLKP(pp)));
+    size_t thisAllocPrev = GET_PREV_ALLOC(HDRP(pp));
+    if (allocPrev != thisAllocPrev)
+    {
+        return 1;
+    }
 
     return 0;
 }
@@ -330,7 +346,6 @@ void *coalesce(void *bp)
 void sf_free(void *pp)
 {
     int validationSuccess = validatePointer(pp);
-    printf("%d %p\n", validationSuccess, pp);
     if (validationSuccess)
         return;
 
