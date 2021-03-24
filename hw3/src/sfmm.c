@@ -19,7 +19,7 @@
 
 #define GET_SIZE(p) (GET(p) & ~0xf)
 #define GET_ALLOC(p) (GET(p) & 0x1)
-#define GET_PREV_ALLOC(p) (GET(p) & 0x2)
+#define GET_PREV_ALLOC(p) (GET(p) & 0x2) >> 1;
 
 #define HDRP(bp) ((char *)(bp)-WSIZE)
 #define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - WSIZE)
@@ -81,7 +81,7 @@ void insert_free_block(size_t size, sf_block *block)
     startingBlock->body.links.next = block;
 }
 
-void initializeHeap()
+void initialize_heap()
 {
     // get page of memory
     sf_mem_grow();
@@ -113,34 +113,40 @@ void *allocate_block(int index, size_t size)
         sf_block *iteratorBlock = startingBlock->body.links.next;
         while (iteratorBlock != startingBlock)
         {
-            sf_header *iteratorHeader = (sf_header *)(iteratorBlock);
+            sf_header *iteratorHeader = (sf_header *)((void *)(iteratorBlock));
             size_t iteratorSize = GET_SIZE(iteratorBlock);
             if (iteratorSize >= size)
             {
                 // found block to allocate to
                 size_t remSize = iteratorSize - size;
 
-                sf_footer *prevFooter = (sf_footer *)(iteratorBlock - 8);
+                sf_footer *prevFooter = (sf_footer *)((void *)(iteratorBlock)-8);
 
-                int prevAlloc = GET_PREV_ALLOC(prevFooter);
+                sf_header *prevHeader = (sf_header *)((void *)(iteratorBlock)-GET_SIZE(prevFooter));
+
+                int prevAlloc = GET_PREV_ALLOC(prevHeader);
 
                 if (prevAlloc != 1)
                     prevAlloc = 0;
 
-                *(iteratorHeader) = size + THIS_BLOCK_ALLOCATED + prevAlloc;
+                // *(iteratorHeader) = size + THIS_BLOCK_ALLOCATED + prevAlloc;
 
-                int padding = 0;
+                PUT(iteratorHeader, PACK(size, THIS_BLOCK_ALLOCATED, prevAlloc));
 
-                if (size % 16 == 0)
+                // int padding = 0;
+
+                // if (size % 16 == 0)
+                // {
+                //     padding = 8;
+                // }
+
+                int alignedSize = find_multiple(remSize);
+
+                if (alignedSize >= 32)
                 {
-                    padding = 8;
-                }
+                    sf_block *address = (struct sf_block *)((void *)(iteratorBlock) + size);
 
-                if (find_multiple(remSize) >= 32)
-                {
-                    sf_block *address = (struct sf_block *)(iteratorBlock + size + padding);
-
-                    insert_free_block(find_multiple(remSize), address);
+                    insert_free_block(alignedSize, address);
 
                     sf_block *prev = (struct sf_block *)(iteratorBlock->body.links.prev);
                     sf_block *next = (struct sf_block *)(iteratorBlock->body.links.next);
@@ -164,7 +170,7 @@ void *sf_malloc(size_t size)
     if (!firstMallocDone)
     {
         firstMallocDone = 1;
-        initializeHeap();
+        initialize_heap();
     }
     // if size is 0, return null
     if (size == 0)
