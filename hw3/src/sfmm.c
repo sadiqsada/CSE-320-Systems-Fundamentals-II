@@ -66,15 +66,16 @@ void insert_free_block(size_t size, sf_block *block)
 {
     int index = find_free_list_index(size);
 
+    printf("value1: %u\n", GET(block) % 8);
+
     // size = size, prev = 1, alloc = 0
-    sf_header *blockHeader = (sf_header *)((void *)(block));
-    *blockHeader = size + PREV_BLOCK_ALLOCATED;
+    sf_header *blockHeader = (sf_header *)(&(block->header));
+    PUT(blockHeader, PACK(size, 0, 1));
 
     sf_footer *blockFooter = (sf_footer *)((void *)(block) + size - 8);
     *blockFooter = size + PREV_BLOCK_ALLOCATED;
 
     // new free block should be inserted to the front of the list
-
     sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[index]); // dummy node index
 
     block->body.links.next = startingBlock->body.links.next;
@@ -100,7 +101,7 @@ void initialize_heap()
     PUT((void *)(sf_mem_end() - 8), PACK(0, 1, 1));
 
     // put rest of the memory in wilderness block
-    sf_block *block = (struct sf_block *)(sf_mem_start() + 40);
+    sf_block *block = (sf_block *)((void *)(sf_mem_start()) + 40);
     insert_free_block(8144, block);
 }
 
@@ -111,10 +112,13 @@ void *place(int index, size_t size)
         // find the address of the block to be searched first
         sf_block *startingBlock = (sf_block *)(&sf_free_list_heads[index]);
 
-        sf_block *iteratorBlock = startingBlock->body.links.next;
+        sf_block *iteratorBlock = (sf_block *)((startingBlock->body.links.next));
+
+        // void *p = iteratorBlock;
+        // printf("%d %p\n", GET(p) % 8, p);
         while (iteratorBlock != startingBlock)
         {
-            sf_header *iteratorHeader = (sf_header *)((void *)(iteratorBlock));
+            sf_header *iteratorHeader = (sf_header *)(&(iteratorBlock->header));
             size_t iteratorSize = GET_SIZE(iteratorBlock);
             if (iteratorSize >= size)
             {
@@ -146,9 +150,10 @@ void *place(int index, size_t size)
                     prev->body.links.next = next;
                     next->body.links.prev = prev;
                 }
-                return (void *)(iteratorBlock + 8);
+
+                return ((void *)(iteratorBlock) + 8);
             }
-            iteratorBlock = iteratorBlock->body.links.next;
+            iteratorBlock = (sf_block *)(iteratorBlock->body.links.next);
         }
         index++;
     }
@@ -246,6 +251,8 @@ void *sf_malloc(size_t size)
 
 int validatePointer(void *pp)
 {
+    // void *p = pp;
+    // printf("%d %p\n", GET(p) % 16, p);
     // check if null
     if (pp == NULL)
     {
@@ -253,7 +260,7 @@ int validatePointer(void *pp)
     }
 
     // check if divisible by 16
-    if (GET(pp) % 16 != 0)
+    if ((unsigned long)(pp) % 16 != 0)
     {
         return 1;
     }
@@ -271,7 +278,7 @@ int validatePointer(void *pp)
     }
 
     // allocated bit in the header is 0
-    if (GET_ALLOC(pp) == 0)
+    if (GET_ALLOC(HDRP(pp)) == 0)
     {
         return 1;
     }
