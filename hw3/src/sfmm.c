@@ -146,7 +146,7 @@ void *place(int index, size_t size)
                     prev->body.links.next = next;
                     next->body.links.prev = prev;
                 }
-                return &(iteratorBlock->body.payload);
+                return (void *)(iteratorBlock + 8);
             }
             iteratorBlock = iteratorBlock->body.links.next;
         }
@@ -176,7 +176,6 @@ void set_mem_grow_epilogue()
 void *allocate_block(int index, size_t size)
 {
     void *placedSuccess = place(index, size);
-
     if (placedSuccess == NULL)
     {
         // could not place block in current heap, grow heap
@@ -201,10 +200,11 @@ void *allocate_block(int index, size_t size)
             }
             bp = sf_mem_grow();
         }
+        sf_errno = ENOMEM;
+        return NULL;
     }
 
-    sf_errno = ENOMEM;
-    return NULL;
+    return placedSuccess;
 }
 
 void *sf_malloc(size_t size)
@@ -239,7 +239,7 @@ void *sf_malloc(size_t size)
     // determine the index of the free list to be searched
     int index = find_free_list_index(newSize);
     // search the list for an appropriate free block
-    char *foundBlock = allocate_block(index, newSize);
+    void *foundBlock = allocate_block(index, newSize);
 
     return foundBlock;
 }
@@ -253,19 +253,19 @@ int validatePointer(void *pp)
     }
 
     // check if divisible by 16
-    // if (GET(pp) % 16 != 0)
-    // {
-    //     return 1;
-    // }
+    if (GET(pp) % 16 != 0)
+    {
+        return 1;
+    }
 
     // size of the block is not a multiple of 16
-    if (GET_SIZE(pp) % 16 != 0)
+    if (GET_SIZE(HDRP(pp)) % 16 != 0)
     {
         return 1;
     }
 
     // size of block is less than minimum block size
-    if (GET_SIZE(pp) < 32)
+    if (GET_SIZE(HDRP(pp)) < 32)
     {
         return 1;
     }
@@ -323,18 +323,19 @@ void *coalesce(void *bp)
 void sf_free(void *pp)
 {
     int validationSuccess = validatePointer(pp);
+    printf("%d %p\n", validationSuccess, pp);
     if (validationSuccess)
         return;
 
-    size_t size = GET_SIZE(HDRP(pp));
-    PUT(HDRP(pp), PACK(size, 0, 0));
-    PUT(HDRP(pp), PACK(size, 0, 0));
+    // size_t size = GET_SIZE(HDRP(pp));
+    // PUT(HDRP(pp), PACK(size, 0, 0));
+    // PUT(HDRP(pp), PACK(size, 0, 0));
 
-    coalesce(pp);
+    // coalesce(pp);
 
-    sf_block *block = (sf_block *)(HDRP(pp));
-    insert_free_block(GET_SIZE(HDRP(pp)), block);
-    return;
+    // sf_block *block = (sf_block *)(HDRP(pp));
+    // insert_free_block(GET_SIZE(HDRP(pp)), block);
+    // return;
 }
 
 void *sf_realloc(void *pp, size_t rsize)

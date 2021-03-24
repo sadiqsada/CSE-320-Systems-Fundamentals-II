@@ -35,11 +35,12 @@ void initializeHeap2()
 
 int main(int argc, char const *argv[])
 {
-    sf_malloc(800);
-    sf_malloc(38);
-    sf_malloc(50);
-    sf_malloc(8990);
-    sf_malloc(8990);
+    void *p = sf_malloc(800);
+    sf_free(p);
+    // sf_malloc(38);
+    // sf_malloc(50);
+    // sf_malloc(8990);
+    // sf_malloc(8990);
     // initializeHeap2();
     sf_show_heap();
     // double *ptr = sf_malloc(sizeof(double));
