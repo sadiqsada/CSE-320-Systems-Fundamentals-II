@@ -8,6 +8,7 @@
 #include "debug.h"
 #include "sfmm.h"
 #include "header.h"
+#include <errno.h>
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
@@ -202,6 +203,7 @@ void *allocate_block(int index, size_t size)
         }
     }
 
+    sf_errno = ENOMEM;
     return NULL;
 }
 
