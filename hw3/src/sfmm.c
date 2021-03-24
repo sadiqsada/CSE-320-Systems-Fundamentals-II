@@ -7,6 +7,7 @@
 #include <string.h>
 #include "debug.h"
 #include "sfmm.h"
+#include "header.h"
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
@@ -22,13 +23,13 @@
 #define GET_PREV_ALLOC(p) (GET(p) & 0x2) >> 1;
 
 #define HDRP(bp) ((char *)(bp)-WSIZE)
-#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - WSIZE)
+#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - 2 * WSIZE)
 
 #define NEXT_BLK(bp) (bp->body.links.next)
 #define PREV_BLK(bp) (bp->body.links.prev)
 
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp)-WSIZE)))
-#define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE((char *)(bp)-WSIZE))
+#define PREV_BLKP(bp) ((char *)(bp)-GET_SIZE((char *)(bp)-2 * WSIZE))
 
 #define SET_NEXT_BLK(bp, next) (NEXT_BLK(bp) = next)
 #define SET_PREV_BLK(bp, prev) (PREV_BLK(bp) = prev)
@@ -102,8 +103,7 @@ void initialize_heap()
     insert_free_block(8144, block);
 }
 
-// allocates a block at index (index) of size (size)
-void *allocate_block(int index, size_t size)
+void *place(int index, size_t size)
 {
     while (index < 8)
     {
@@ -129,16 +129,7 @@ void *allocate_block(int index, size_t size)
                 if (prevAlloc != 1)
                     prevAlloc = 0;
 
-                // *(iteratorHeader) = size + THIS_BLOCK_ALLOCATED + prevAlloc;
-
                 PUT(iteratorHeader, PACK(size, THIS_BLOCK_ALLOCATED, prevAlloc));
-
-                // int padding = 0;
-
-                // if (size % 16 == 0)
-                // {
-                //     padding = 8;
-                // }
 
                 int alignedSize = find_multiple(remSize);
 
@@ -159,6 +150,54 @@ void *allocate_block(int index, size_t size)
             iteratorBlock = iteratorBlock->body.links.next;
         }
         index++;
+    }
+    return NULL;
+}
+
+void set_mem_grow_header(void *start)
+{
+
+    sf_footer *prevFooter = (sf_footer *)((start)-16);
+
+    sf_header *prevHeader = (sf_header *)((start)-8 - GET_SIZE(prevFooter));
+
+    int prevAlloc = GET_ALLOC(prevHeader);
+    PUT((void *)(start - 8), PACK(PAGE_SZ, 0, prevAlloc));
+    PUT((void *)(sf_mem_end() - 16), PACK(PAGE_SZ, 0, prevAlloc));
+}
+
+void set_mem_grow_epilogue()
+{
+    PUT((void *)(sf_mem_end() - 8), PACK(0, 1, 1));
+}
+
+// allocates a block at index (index) of size (size)
+void *allocate_block(int index, size_t size)
+{
+    void *placedSuccess = place(index, size);
+
+    if (placedSuccess == NULL)
+    {
+        // could not place block in current heap, grow heap
+        void *bp = sf_mem_grow();
+        while (bp != NULL)
+        {
+            set_mem_grow_header(bp);
+            set_mem_grow_epilogue();
+            void *coalescedBlock = coalesce(bp);
+            size_t blockSize = GET_SIZE(HDRP(coalescedBlock));
+            printf("Size: %zu\n", blockSize);
+            break;
+            //     sf_block *blockP = (sf_block *)(coalescedBlock);
+
+            //     insert_free_block(blockSize, blockP);
+            //     placedSuccess = place(index, size);
+            //     if (placedSuccess != NULL)
+            //     {
+            //         return placedSuccess;
+            //     }
+            //     bp = sf_mem_grow();
+        }
     }
 
     return NULL;
@@ -244,7 +283,7 @@ int validatePointer(void *pp)
 
 void *coalesce(void *bp)
 {
-    size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
+    size_t prev_alloc = GET_PREV_ALLOC(HDRP((bp)));
     size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
     size_t size = GET_SIZE(HDRP(bp));
     if (prev_alloc && next_alloc)
@@ -254,22 +293,24 @@ void *coalesce(void *bp)
     else if (prev_alloc && !next_alloc)
     { /* Case 2 */
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
-        PUT(HDRP(bp), PACK(size, 0, 0));
-        PUT(FTRP(bp), PACK(size, 0, 0));
+        PUT(HDRP(bp), PACK(size, 0, 1));
+        PUT(FTRP(bp), PACK(size, 0, 1));
     }
     else if (!prev_alloc && next_alloc)
     { /* Case 3 */
         size += GET_SIZE(HDRP(PREV_BLKP(bp)));
-        PUT(FTRP(bp), PACK(size, 0, 0));
-        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, 0));
+        size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
+        PUT(FTRP(bp), PACK(size, 0, prevAlloc));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, prevAlloc));
         bp = PREV_BLKP(bp);
     }
     else
     { /* Case 4 */
+        size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) +
                 GET_SIZE(FTRP(NEXT_BLKP(bp)));
-        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, 0));
-        PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0, 0));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, prevAlloc));
+        PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0, prevAlloc));
         bp = PREV_BLKP(bp);
     }
     return bp;
