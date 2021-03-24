@@ -194,7 +194,6 @@ void *allocate_block(int index, size_t size)
                 insert_free_block(blockSize, blockP);
             }
             placedSuccess = place(index, size);
-            break;
             if (placedSuccess != NULL)
             {
                 return placedSuccess;
