@@ -185,18 +185,21 @@ void *allocate_block(int index, size_t size)
             set_mem_grow_header(bp);
             set_mem_grow_epilogue();
             void *coalescedBlock = coalesce(bp);
-            size_t blockSize = GET_SIZE(HDRP(coalescedBlock));
-            printf("Size: %zu\n", blockSize);
+            size_t cSize = GET_SIZE(HDRP(coalescedBlock));
+            size_t bpSize = GET_SIZE(HDRP(bp));
+            if (cSize == bpSize) // didn't coalesce anything, add new block to free list
+            {
+                size_t blockSize = GET_SIZE(HDRP(coalescedBlock));
+                sf_block *blockP = (sf_block *)(HDRP(coalescedBlock));
+                insert_free_block(blockSize, blockP);
+            }
+            placedSuccess = place(index, size);
             break;
-            //     sf_block *blockP = (sf_block *)(coalescedBlock);
-
-            //     insert_free_block(blockSize, blockP);
-            //     placedSuccess = place(index, size);
-            //     if (placedSuccess != NULL)
-            //     {
-            //         return placedSuccess;
-            //     }
-            //     bp = sf_mem_grow();
+            if (placedSuccess != NULL)
+            {
+                return placedSuccess;
+            }
+            bp = sf_mem_grow();
         }
     }
 
