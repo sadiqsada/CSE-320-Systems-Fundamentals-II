@@ -347,17 +347,20 @@ void sf_free(void *pp)
 {
     int validationSuccess = validatePointer(pp);
     if (validationSuccess)
-        return;
+    {
+        abort();
+    }
 
-    // size_t size = GET_SIZE(HDRP(pp));
-    // PUT(HDRP(pp), PACK(size, 0, 0));
-    // PUT(HDRP(pp), PACK(size, 0, 0));
+    size_t size = GET_SIZE(HDRP(pp));
+    size_t prevAlloc = GET_PREV_ALLOC(HDRP(pp));
 
-    // coalesce(pp);
+    PUT(HDRP(pp), PACK(size, 0, prevAlloc));
+    PUT(FTRP(pp), PACK(size, 0, prevAlloc));
 
-    // sf_block *block = (sf_block *)(HDRP(pp));
-    // insert_free_block(GET_SIZE(HDRP(pp)), block);
-    // return;
+    void *coalescedBlock = coalesce(pp);
+
+    sf_block *block = (sf_block *)(HDRP(coalescedBlock));
+    insert_free_block(GET_SIZE(HDRP(pp)), block);
 }
 
 void *sf_realloc(void *pp, size_t rsize)
