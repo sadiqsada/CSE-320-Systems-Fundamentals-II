@@ -12,8 +12,7 @@
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
-#define HSIZE 8 // header size = 8
-#define WSIZE 8 // word size = 2
+#define WSIZE 8 // word size = 8
 
 #define GET(p) (*(unsigned int *)(p))
 #define PUT(p, val) (*(unsigned int *)(p) = (val))
@@ -40,7 +39,8 @@ int firstMallocDone = 0; // tracks whether a malloc is the first one
 // finds next multiple of 16 for num input
 size_t find_multiple(int num)
 {
-    return (num % 16 != 0) ? num + (16 - (num % 16)) : num;
+    int val = (num % 16 != 0) ? num + (16 - (num % 16)) : num;
+    return val < 32 ? 32 : val;
 }
 
 // finds the appropriate index in free list to search
@@ -335,23 +335,23 @@ void *coalesce(void *bp)
     }
     else if (!prev_alloc && next_alloc)
     { /* Case 3 */
-        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
         size += GET_SIZE(HDRP(PREV_BLKP(bp)));
         size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         PUT(FTRP(bp), PACK(size, 0, prevAlloc));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, prevAlloc));
         bp = PREV_BLKP(bp);
+        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
     }
     else
     { /* Case 4 */
-        remove_pointer((sf_block *)(HDRP(NEXT_BLKP(bp))));
-        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
         size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) +
                 GET_SIZE(FTRP(NEXT_BLKP(bp)));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, prevAlloc));
         PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0, prevAlloc));
         bp = PREV_BLKP(bp);
+        remove_pointer((sf_block *)(HDRP(NEXT_BLKP(bp))));
+        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
     }
     return bp;
 }
@@ -425,6 +425,32 @@ void *sf_realloc(void *pp, size_t rsize)
         // no splinter
         else
         {
+            // update header of first block
+            sf_header *header = (sf_header *)(HDRP(pp));
+            size_t prevAlloc = GET_PREV_ALLOC(header);
+            size_t alloc = GET_ALLOC(header);
+
+            PUT(header, PACK(newRSize, alloc, prevAlloc));
+
+            // update the split block
+            sf_header *splitHeader = (sf_header *)(pp + newRSize - 8);
+
+            sf_footer *splitFooter = (sf_footer *)((void *)(splitHeader) + remSize - 8);
+
+            *splitHeader = remSize + 0 + PREV_BLOCK_ALLOCATED;
+            *splitFooter = remSize + 0 + PREV_BLOCK_ALLOCATED;
+
+            // coalesce and insert into free list
+            void *coalescedBlock = coalesce((void *)(splitHeader) + 8);
+
+            sf_block *block = (sf_block *)((void *)(HDRP(coalescedBlock)));
+
+            size_t blockSize = GET_SIZE(block);
+
+            insert_free_block(blockSize, block);
+
+            // return pointer to the smaller payload in the beginning
+            return pp;
         }
     }
     return NULL;
