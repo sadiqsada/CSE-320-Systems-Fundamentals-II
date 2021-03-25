@@ -378,6 +378,32 @@ void sf_free(void *pp)
 
 void *sf_realloc(void *pp, size_t rsize)
 {
+    int validateSuccess = validatePointer(pp);
+    if (validateSuccess)
+    {
+        abort();
+    }
+
+    if (rsize == 0)
+    {
+        sf_free(pp);
+        return NULL;
+    }
+
+    size_t currentSize = GET_SIZE(HDRP(pp));
+    // reallocating to a larger block
+
+    if (currentSize < rsize)
+    {
+        sf_block *newBlock = sf_malloc(rsize);
+        if (newBlock == NULL)
+        {
+            return NULL;
+        }
+        memcpy(pp, newBlock, currentSize - 8);
+        sf_free(pp);
+        return newBlock;
+    }
     return NULL;
 }
 

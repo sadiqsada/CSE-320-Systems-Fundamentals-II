@@ -35,9 +35,10 @@ void initializeHeap2()
 
 int main(int argc, char const *argv[])
 {
-    void *p = sf_malloc(48);
-    sf_free(p);
-    // sf_malloc(38);
+    // void *p = sf_malloc(32704);
+    // sf_free(p);
+    void *p = sf_malloc(38);
+    sf_realloc(p, 70);
     // sf_malloc(50);
     // sf_malloc(8990);
     // sf_malloc(8990);
