@@ -308,6 +308,15 @@ int validatePointer(void *pp)
     return 0;
 }
 
+void remove_pointer(sf_block *bp)
+{
+    SET_PREV_BLK(NEXT_BLK(bp), PREV_BLK(bp));
+    SET_NEXT_BLK(PREV_BLK(bp), NEXT_BLK(bp));
+
+    SET_NEXT_BLK(bp, NULL);
+    SET_PREV_BLK(bp, NULL);
+}
+
 void *coalesce(void *bp)
 {
     size_t prev_alloc = GET_PREV_ALLOC(HDRP((bp)));
@@ -319,12 +328,14 @@ void *coalesce(void *bp)
     }
     else if (prev_alloc && !next_alloc)
     { /* Case 2 */
+        remove_pointer((sf_block *)(HDRP(NEXT_BLKP(bp))));
         size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(HDRP(bp), PACK(size, 0, 1));
         PUT(FTRP(bp), PACK(size, 0, 1));
     }
     else if (!prev_alloc && next_alloc)
     { /* Case 3 */
+        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
         size += GET_SIZE(HDRP(PREV_BLKP(bp)));
         size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         PUT(FTRP(bp), PACK(size, 0, prevAlloc));
@@ -333,6 +344,8 @@ void *coalesce(void *bp)
     }
     else
     { /* Case 4 */
+        remove_pointer((sf_block *)(HDRP(NEXT_BLKP(bp))));
+        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
         size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) +
                 GET_SIZE(FTRP(NEXT_BLKP(bp)));
