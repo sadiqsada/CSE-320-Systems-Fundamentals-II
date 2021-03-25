@@ -456,7 +456,39 @@ void *sf_realloc(void *pp, size_t rsize)
     return NULL;
 }
 
+int isPowerOfTwo(size_t align)
+{
+    return ((align != 0) && (align & (align - 1)) == 0) ? 0 : 1;
+}
+
+int validate_align(size_t align)
+{
+    // at least as large as the minimum block size
+    if (align < 32)
+    {
+        return 1;
+    }
+
+    // check align is a power of 2
+    if (isPowerOfTwo(align))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 void *sf_memalign(size_t size, size_t align)
 {
+    int validateSuccess = validate_align(align);
+
+    if (validateSuccess)
+    {
+        sf_errno = EINVAL;
+        return NULL;
+    }
+
+    size_t newSize = size + align + 32 + 8;
+
     return NULL;
 }
