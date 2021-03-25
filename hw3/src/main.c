@@ -37,8 +37,8 @@ int main(int argc, char const *argv[])
 {
     // void *p = sf_malloc(32704);
     // sf_free(p);
-    void *p = sf_malloc(38);
-    sf_realloc(p, 70);
+    void *p = sf_malloc(80);
+    sf_realloc(p, 64);
     // sf_malloc(50);
     // sf_malloc(8990);
     // sf_malloc(8990);

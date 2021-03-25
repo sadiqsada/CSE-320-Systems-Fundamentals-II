@@ -391,9 +391,15 @@ void *sf_realloc(void *pp, size_t rsize)
     }
 
     size_t currentSize = GET_SIZE(HDRP(pp));
-    // reallocating to a larger block
+    size_t newRSize = find_multiple(rsize + 8);
+    // same size
+    if (currentSize == newRSize)
+    {
+        return pp;
+    }
 
-    if (currentSize < rsize)
+    // reallocating to a larger block
+    else if (currentSize < newRSize)
     {
         sf_block *newBlock = sf_malloc(rsize);
         if (newBlock == NULL)
@@ -403,6 +409,23 @@ void *sf_realloc(void *pp, size_t rsize)
         memcpy(pp, newBlock, currentSize - 8);
         sf_free(pp);
         return newBlock;
+    }
+
+    // reallocating to a smaller block
+    else
+    {
+        size_t remSize = currentSize - newRSize;
+
+        // causes splinter
+        if (remSize < 32)
+        {
+            return pp;
+        }
+
+        // no splinter
+        else
+        {
+        }
     }
     return NULL;
 }
