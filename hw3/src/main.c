@@ -35,8 +35,45 @@ void initializeHeap2()
 
 int main(int argc, char const *argv[])
 {
-    sf_malloc(32704);
-    // void *p = sf_malloc(32704);
+    char *ptr1 = sf_malloc(50 * sizeof(double));
+    *(ptr1) = 'A';
+
+    sf_show_blocks();
+    printf("\n");
+
+    char *ptr2 = sf_malloc(78 * sizeof(double));
+    *(ptr2) = 'A';
+
+    sf_show_blocks();
+    printf("\n");
+
+    char *ptr3 = sf_malloc(1 * sizeof(double));
+    *(ptr3) = 'A';
+
+    sf_show_blocks();
+    printf("\n");
+
+    ptr1 = sf_realloc(ptr1, 300);
+
+    sf_show_blocks();
+    printf("\n");
+
+    ptr2 = sf_realloc(ptr2, 640);
+
+    sf_show_blocks();
+    printf("\n");
+
+    sf_free(ptr1);
+    sf_show_blocks();
+    printf("\n");
+
+    ptr2 = sf_realloc(ptr2, 300);
+    sf_show_blocks();
+    printf("\n");
+
+    sf_show_free_lists();
+
+    // sf_show_free_lists();
     // sf_free(p);
     // void *p = sf_malloc(80);
     // sf_realloc(p, 8);
@@ -46,7 +83,7 @@ int main(int argc, char const *argv[])
     // initializeHeap2();
     // char *ptrA = sf_memalign(50, 128); // Want a 50 byte block that is 128 aligned
     // *(ptrA) = 'A';
-    sf_show_heap();
+    // sf_show_heap();
     // double *ptr = sf_malloc(sizeof(double));
 
     // *ptr = 320320320e-320;
