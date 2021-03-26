@@ -43,6 +43,11 @@ size_t find_multiple(int num)
     return val < 32 ? 32 : val;
 }
 
+size_t find_lower_multiple(int num)
+{
+    int val = (num % 16 != 0) ? num - (16 - (num % 16)) : num;
+    return val < 32 ? 32 : val;
+}
 // finds the appropriate index in free list to search
 int find_free_list_index(size_t size)
 {
@@ -509,8 +514,13 @@ void *sf_memalign(size_t size, size_t align)
         return NULL;
     }
 
-    size_t newSize = find_multiple(size) + align + 32 + 8;
+    size_t newSize = size + align + 32 + 8;
+    printf("FULL SIZE: %zu\n", newSize);
+
     void *initialBlock = sf_malloc(newSize);
+    size_t mallocSize = GET_SIZE(HDRP(initialBlock));
+
+    printf("MALLOCED SIZE: %zu\n", mallocSize);
 
     // check initial alignment
     if (isAligned(initialBlock, align) == 0)
@@ -540,29 +550,37 @@ void *sf_memalign(size_t size, size_t align)
     size_t alloc = GET_ALLOC(freeHeader);
     *freeHeader = PACK((size_t)(address - initialBlock), alloc, prevAlloc);
 
+    printf("FREE HEADER SIZE: %u\n", GET_SIZE(freeHeader));
+    printf("FREE ALLOC SIZE: %u\n", GET_ALLOC(freeHeader));
+
     sf_free(initialBlock);
 
     sf_header *newHeader = (sf_header *)(address - 8);
 
-    size_t remSize = (newSize - (address - initialBlock));
-    size_t allocSize = find_multiple(size);
+    size_t allocSize = find_multiple(size + 8);
 
     *newHeader = PACK((size_t)allocSize, 1, 0);
 
-    size_t alignedSize = remSize - allocSize;
+    size_t remSize = mallocSize - GET_SIZE(HDRP(initialBlock)) - GET_SIZE(newHeader);
 
-    sf_block *newAddress = (struct sf_block *)((void *)(initialBlock) + GET_SIZE(freeHeader) + allocSize);
+    printf("REMAINING SIZE: %zu\n", remSize);
 
-    if (remSize != 0 && alignedSize >= 32)
+    printf("ALLOCATED SIZE: %u\n", GET_SIZE(newHeader));
+
+    sf_block *newAddress = (struct sf_block *)((void *)(freeHeader) + GET_SIZE(freeHeader) + GET_SIZE(newHeader));
+
+    printf("FREE HEADER ADDRESS: %p\n", freeHeader);
+    printf("NEW HEADER ADDRESS: %p\n", newAddress);
+    printf("SUBTRACTED: %u\n", (unsigned int)((void *)newAddress - (void *)freeHeader));
+
+    sf_header *newAddressH = (sf_header *)(newAddress);
+
+    if (remSize != 0 && remSize >= 32)
     {
-        insert_free_block(alignedSize, newAddress);
+        PUT(newAddressH, PACK(remSize, 1, 1));
+        printf("ABOUT TO BE FREED: %u\n", GET_SIZE(newAddressH));
+        sf_free((void *)newAddressH + 8);
     }
 
-    sf_block *prev = (struct sf_block *)(newAddress->body.links.prev);
-    sf_block *next = (struct sf_block *)(newAddress->body.links.next);
-
-    prev->body.links.next = next;
-    next->body.links.prev = prev;
-
-    return initialBlock + (address - initialBlock);
+    return (void *)newHeader + 8;
 }
