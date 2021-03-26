@@ -567,6 +567,8 @@ void *sf_memalign(size_t size, size_t align)
         }
     }
 
+    printf("ALIGNED ADDRESS: %p\n", address);
+
     // set header and footer for free block in the beginning
     sf_header *freeHeader = (sf_header *)(HDRP(initialBlock));
     size_t prevAlloc = GET_PREV_ALLOC(freeHeader);

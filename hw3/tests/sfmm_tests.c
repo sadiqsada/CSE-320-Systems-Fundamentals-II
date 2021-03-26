@@ -9,27 +9,35 @@
  * Assert the total number of free blocks of a specified size.
  * If size == 0, then assert the total number of all free blocks.
  */
-void assert_free_block_count(size_t size, int count) {
-    int cnt = 0;
-    for(int i = 0; i < NUM_FREE_LISTS; i++) {
-	sf_block *bp = sf_free_list_heads[i].body.links.next;
-	while(bp != &sf_free_list_heads[i]) {
-	    if(size == 0 || size == (bp->header & ~0xf)) {
-		cnt++;
-	    }
-	    bp = bp->body.links.next;
+void assert_free_block_count(size_t size, int count)
+{
+	int cnt = 0;
+	for (int i = 0; i < NUM_FREE_LISTS; i++)
+	{
+		sf_block *bp = sf_free_list_heads[i].body.links.next;
+		while (bp != &sf_free_list_heads[i])
+		{
+			if (size == 0 || size == (bp->header & ~0xf))
+			{
+				cnt++;
+			}
+			bp = bp->body.links.next;
+		}
 	}
-    }
-    if(size == 0) {
-	cr_assert_eq(cnt, count, "Wrong number of free blocks (exp=%d, found=%d)",
-		     count, cnt);
-    } else {
-	cr_assert_eq(cnt, count, "Wrong number of free blocks of size %ld (exp=%d, found=%d)",
-		     size, count, cnt);
-    }
+	if (size == 0)
+	{
+		cr_assert_eq(cnt, count, "Wrong number of free blocks (exp=%d, found=%d)",
+					 count, cnt);
+	}
+	else
+	{
+		cr_assert_eq(cnt, count, "Wrong number of free blocks of size %ld (exp=%d, found=%d)",
+					 size, count, cnt);
+	}
 }
 
-Test(sfmm_basecode_suite, malloc_an_int, .timeout = TEST_TIMEOUT) {
+Test(sfmm_basecode_suite, malloc_an_int, .timeout = TEST_TIMEOUT)
+{
 	sf_errno = 0;
 	size_t sz = 4;
 	int *x = sf_malloc(sz);
@@ -47,7 +55,8 @@ Test(sfmm_basecode_suite, malloc_an_int, .timeout = TEST_TIMEOUT) {
 	cr_assert(sf_mem_start() + 8192 == sf_mem_end(), "Allocated more than necessary!");
 }
 
-Test(sfmm_basecode_suite, malloc_four_pages, .timeout = TEST_TIMEOUT) {
+Test(sfmm_basecode_suite, malloc_four_pages, .timeout = TEST_TIMEOUT)
+{
 	sf_errno = 0;
 
 	// We want to allocate up to exactly four pages, so there has to be space
@@ -58,7 +67,8 @@ Test(sfmm_basecode_suite, malloc_four_pages, .timeout = TEST_TIMEOUT) {
 	cr_assert(sf_errno == 0, "sf_errno is not 0!");
 }
 
-Test(sfmm_basecode_suite, malloc_too_large, .timeout = TEST_TIMEOUT) {
+Test(sfmm_basecode_suite, malloc_too_large, .timeout = TEST_TIMEOUT)
+{
 	sf_errno = 0;
 	void *x = sf_malloc(524288);
 
@@ -68,7 +78,8 @@ Test(sfmm_basecode_suite, malloc_too_large, .timeout = TEST_TIMEOUT) {
 	cr_assert(sf_errno == ENOMEM, "sf_errno is not ENOMEM!");
 }
 
-Test(sfmm_basecode_suite, free_no_coalesce, .timeout = TEST_TIMEOUT) {
+Test(sfmm_basecode_suite, free_no_coalesce, .timeout = TEST_TIMEOUT)
+{
 	sf_errno = 0;
 	size_t sz_x = 8, sz_y = 200, sz_z = 1;
 	/* void *x = */ sf_malloc(sz_x);
@@ -83,7 +94,8 @@ Test(sfmm_basecode_suite, free_no_coalesce, .timeout = TEST_TIMEOUT) {
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
 }
 
-Test(sfmm_basecode_suite, free_coalesce, .timeout = TEST_TIMEOUT) {
+Test(sfmm_basecode_suite, free_coalesce, .timeout = TEST_TIMEOUT)
+{
 	sf_errno = 0;
 	size_t sz_w = 8, sz_x = 200, sz_y = 300, sz_z = 4;
 	/* void *w = */ sf_malloc(sz_w);
@@ -100,8 +112,9 @@ Test(sfmm_basecode_suite, free_coalesce, .timeout = TEST_TIMEOUT) {
 	cr_assert(sf_errno == 0, "sf_errno is not zero!");
 }
 
-Test(sfmm_basecode_suite, freelist, .timeout = TEST_TIMEOUT) {
-        size_t sz_u = 200, sz_v = 300, sz_w = 200, sz_x = 500, sz_y = 200, sz_z = 700;
+Test(sfmm_basecode_suite, freelist, .timeout = TEST_TIMEOUT)
+{
+	size_t sz_u = 200, sz_v = 300, sz_w = 200, sz_x = 500, sz_y = 200, sz_z = 700;
 	void *u = sf_malloc(sz_u);
 	/* void *v = */ sf_malloc(sz_v);
 	void *w = sf_malloc(sz_w);
@@ -121,12 +134,13 @@ Test(sfmm_basecode_suite, freelist, .timeout = TEST_TIMEOUT) {
 	int i = 3;
 	sf_block *bp = sf_free_list_heads[i].body.links.next;
 	cr_assert_eq(bp, (char *)y - 8,
-		     "Wrong first block in free list %d: (found=%p, exp=%p)",
-                     i, bp, (char *)y - 8);
+				 "Wrong first block in free list %d: (found=%p, exp=%p)",
+				 i, bp, (char *)y - 8);
 }
 
-Test(sfmm_basecode_suite, realloc_larger_block, .timeout = TEST_TIMEOUT) {
-        size_t sz_x = sizeof(int), sz_y = 10, sz_x1 = sizeof(int) * 20;
+Test(sfmm_basecode_suite, realloc_larger_block, .timeout = TEST_TIMEOUT)
+{
+	size_t sz_x = sizeof(int), sz_y = 10, sz_x1 = sizeof(int) * 20;
 	void *x = sf_malloc(sz_x);
 	/* void *y = */ sf_malloc(sz_y);
 	x = sf_realloc(x, sz_x1);
@@ -135,16 +149,17 @@ Test(sfmm_basecode_suite, realloc_larger_block, .timeout = TEST_TIMEOUT) {
 	sf_block *bp = (sf_block *)((char *)x - 8);
 	cr_assert(bp->header & 0x1, "Allocated bit is not set!");
 	cr_assert((bp->header & ~0xf) == 96,
-		  "Realloc'ed block size (0x%ld) not what was expected (0x%ld)!",
-		  bp->header & ~0xf, 96);
+			  "Realloc'ed block size (0x%ld) not what was expected (0x%ld)!",
+			  bp->header & ~0xf, 96);
 
 	assert_free_block_count(0, 2);
 	assert_free_block_count(32, 1);
 	assert_free_block_count(7984, 1);
 }
 
-Test(sfmm_basecode_suite, realloc_smaller_block_splinter, .timeout = TEST_TIMEOUT) {
-        size_t sz_x = 80, sz_y = 64;
+Test(sfmm_basecode_suite, realloc_smaller_block_splinter, .timeout = TEST_TIMEOUT)
+{
+	size_t sz_x = 80, sz_y = 64;
 	void *x = sf_malloc(sz_x);
 	void *y = sf_realloc(x, sz_y);
 
@@ -160,8 +175,9 @@ Test(sfmm_basecode_suite, realloc_smaller_block_splinter, .timeout = TEST_TIMEOU
 	assert_free_block_count(8048, 1);
 }
 
-Test(sfmm_basecode_suite, realloc_smaller_block_free_block, .timeout = TEST_TIMEOUT) {
-        size_t sz_x = 64, sz_y = 8;
+Test(sfmm_basecode_suite, realloc_smaller_block_free_block, .timeout = TEST_TIMEOUT)
+{
+	size_t sz_x = 64, sz_y = 8;
 	void *x = sf_malloc(sz_x);
 	void *y = sf_realloc(x, sz_y);
 
@@ -180,3 +196,69 @@ Test(sfmm_basecode_suite, realloc_smaller_block_free_block, .timeout = TEST_TIME
 //STUDENT UNIT TESTS SHOULD BE WRITTEN BELOW
 //DO NOT DELETE THESE COMMENTS
 //############################################
+
+Test(sfmm_basecode_suite, zero_malloc_test, .timeout = TEST_TIMEOUT)
+{
+	size_t size = 0;
+	void *x = sf_malloc(size);
+
+	cr_assert_null(x, "x is not NULL!");
+}
+
+Test(sfmm_basecode_suite, invalid_pointer_free_test, .signal = SIGABRT, .timeout = TEST_TIMEOUT)
+{
+	// the prev_alloc bit does not match alloc of prev block
+	size_t size = 100;
+	void *x = sf_malloc(size);
+
+	sf_header *header = (sf_header *)((char *)x - 8);
+	*(header) = *(header) & ~0x1; // flip alloc bit
+
+	sf_free(x);
+}
+
+Test(sfmm_basecode_suite, realloc_zero_test, .timeout = TEST_TIMEOUT)
+{
+	// the prev_alloc bit does not match alloc of prev block
+	size_t size = 100;
+	void *x = sf_malloc(size);
+
+	void *y = sf_realloc(x, 0);
+
+	cr_assert_null(y, "y is not NULL");
+}
+
+Test(sfmm_basecode_suite, memalign_zero_align, .timeout = TEST_TIMEOUT)
+{
+	// the prev_alloc bit does not match alloc of prev block
+	size_t size = 100, align = 0;
+	void *x = sf_memalign(size, align);
+
+	cr_assert_null(x, "x is not NULL");
+	cr_assert(sf_errno == EINVAL, "sf_errno not set to EINVAL.");
+}
+
+Test(sfmm_basecode_suite, memalign_not_power_of_two, .timeout = TEST_TIMEOUT)
+{
+	// the prev_alloc bit does not match alloc of prev block
+	size_t size = 100, align = 127;
+	void *x = sf_memalign(size, align);
+
+	cr_assert_null(x, "x is not NULL");
+	cr_assert(sf_errno == EINVAL, "sf_errno not set to EINVAL.");
+}
+
+Test(sfmm_basecode_suite, memalign_basic_test, .timeout = TEST_TIMEOUT)
+{
+	size_t size = 55, align = 256;
+	void *x = sf_memalign(size, align);
+
+	cr_assert_not_null(x, "x is NULL!");
+
+	sf_block *bp = (sf_block *)((char *)x - 8);
+	cr_assert(bp->header & 0x1, "Allocated bit is not set!");
+	cr_assert((bp->header & ~0xf) == 64, "block size not what was expected!");
+	cr_assert((unsigned long)x % align == 0, "Returned payload is not properly aligned");
+
+	assert_free_block_count(0, 2);
+}
