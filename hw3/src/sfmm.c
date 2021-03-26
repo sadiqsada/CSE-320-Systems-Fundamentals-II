@@ -504,6 +504,28 @@ int isAligned(void *p, size_t align)
     return ((unsigned long)(p) % align == 0) ? 0 : 1;
 }
 
+void *split(void *block, size_t mallocSize, size_t size)
+{
+    sf_header *newHeader = (sf_header *)(block - 8);
+    size_t allocSize = find_multiple(size + 8);
+
+    *newHeader = PACK((size_t)allocSize, 1, 0);
+
+    size_t remSize = mallocSize - GET_SIZE(newHeader);
+
+    sf_block *newAddress = (struct sf_block *)((void *)(block) + GET_SIZE(newHeader) - 8);
+
+    sf_header *newAddressH = (sf_header *)(newAddress);
+
+    if (remSize != 0 && remSize >= 32)
+    {
+        PUT(newAddressH, PACK(remSize, 1, 1));
+        printf("ABOUT TO BE FREED: %u\n", GET_SIZE(newAddressH));
+        sf_free((void *)newAddressH + 8);
+    }
+    return (void *)newHeader + 8;
+}
+
 void *sf_memalign(size_t size, size_t align)
 {
     int validateSuccess = validate_align(align);
@@ -525,12 +547,13 @@ void *sf_memalign(size_t size, size_t align)
     // check initial alignment
     if (isAligned(initialBlock, align) == 0)
     {
-        return initialBlock;
+        void *p = split(initialBlock, mallocSize, size);
+        return p;
     }
 
     void *address = initialBlock + 16;
 
-    while (isAligned(address, align) == 0)
+    while (isAligned(address, align) == 1)
     {
         address += 16;
     }
@@ -538,7 +561,7 @@ void *sf_memalign(size_t size, size_t align)
     if (address - initialBlock == 16)
     {
         address += 16;
-        while (isAligned(address, align) == 0)
+        while (isAligned(address, align) == 1)
         {
             address += 16;
         }
