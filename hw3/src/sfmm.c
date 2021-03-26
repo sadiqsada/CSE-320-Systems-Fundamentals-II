@@ -64,24 +64,26 @@ int find_free_list_index(size_t size)
 // insert a block of size (size)
 void insert_free_block(size_t size, sf_block *block)
 {
+
+    // set pal of next to 0
+    void *nextBlock = (NEXT_BLKP((void *)block + 8));
+    sf_header *nextHeader = (sf_header *)(HDRP(nextBlock));
+    *(nextHeader) = *(nextHeader) & ~0x2;
+
+    if (GET_ALLOC(nextHeader) == 0)
+    {
+        sf_footer *nextFooter = (sf_footer *)(FTRP(NEXT_BLKP((void *)block + 8)));
+        *(nextFooter) = *(nextFooter) & ~0x2;
+    }
+
     int index = find_free_list_index(size);
 
-    // size = size, prev = 1, alloc = 0
+    // size = size, prev = 1, alloc = 0bt
     sf_header *blockHeader = (sf_header *)(&(block->header));
     PUT(blockHeader, PACK(size, 0, 1));
 
     sf_footer *blockFooter = (sf_footer *)((void *)(block) + size - 8);
     PUT(blockFooter, PACK(size, 0, 1));
-
-    // set pal of next to 0
-    sf_header *nextHeader = (sf_header *)(HDRP(NEXT_BLKP((void *)block + 8)));
-    *(nextHeader) = *(nextHeader) & ~0x2;
-
-    if (GET_ALLOC(nextHeader) == 0)
-    {
-        sf_footer *nextFooter = (sf_footer *)(FTRP(NEXT_BLKP(block + 8)));
-        *(nextFooter) = *(nextFooter) & ~0x2;
-    }
 
     // new free block should be inserted to the front of the list
     sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[index]); // dummy node index
