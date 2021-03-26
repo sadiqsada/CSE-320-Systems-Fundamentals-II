@@ -35,14 +35,17 @@ void initializeHeap2()
 
 int main(int argc, char const *argv[])
 {
+    sf_malloc(32704);
     // void *p = sf_malloc(32704);
     // sf_free(p);
-    void *p = sf_malloc(80);
-    sf_realloc(p, 8);
+    // void *p = sf_malloc(80);
+    // sf_realloc(p, 8);
     // sf_malloc(50);
     // sf_malloc(8990);
     // sf_malloc(8990);
     // initializeHeap2();
+    // char *ptrA = sf_memalign(50, 128); // Want a 50 byte block that is 128 aligned
+    // *(ptrA) = 'A';
     sf_show_heap();
     // double *ptr = sf_malloc(sizeof(double));
 

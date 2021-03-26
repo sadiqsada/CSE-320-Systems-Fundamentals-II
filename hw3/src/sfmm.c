@@ -71,7 +71,7 @@ void insert_free_block(size_t size, sf_block *block)
     PUT(blockHeader, PACK(size, 0, 1));
 
     sf_footer *blockFooter = (sf_footer *)((void *)(block) + size - 8);
-    *blockFooter = size + PREV_BLOCK_ALLOCATED;
+    PUT(blockFooter, PACK(size, 0, 1));
 
     // new free block should be inserted to the front of the list
     sf_block *startingBlock = (struct sf_block *)(&sf_free_list_heads[index]); // dummy node index
@@ -95,8 +95,8 @@ void initialize_heap()
     }
 
     // initialize prologue and epilogue
-    PUT((void *)(sf_mem_start() + 8), PACK(32, 1, 1));
-    PUT((void *)(sf_mem_end() - 8), PACK(0, 1, 1));
+    PUT((void *)(sf_mem_start() + 8), PACK(32, 1, 0));
+    PUT((void *)(sf_mem_end() - 8), PACK(0, 1, 0));
 
     // put rest of the memory in wilderness block
     sf_block *block = (sf_block *)((void *)(sf_mem_start()) + 40);
@@ -134,18 +134,18 @@ void *place(int index, size_t size)
 
                 int alignedSize = find_multiple(remSize);
 
-                if (alignedSize >= 32)
+                if (remSize != 0 && alignedSize >= 32)
                 {
                     sf_block *address = (struct sf_block *)((void *)(iteratorBlock) + size);
 
                     insert_free_block(alignedSize, address);
-
-                    sf_block *prev = (struct sf_block *)(iteratorBlock->body.links.prev);
-                    sf_block *next = (struct sf_block *)(iteratorBlock->body.links.next);
-
-                    prev->body.links.next = next;
-                    next->body.links.prev = prev;
                 }
+
+                sf_block *prev = (struct sf_block *)(iteratorBlock->body.links.prev);
+                sf_block *next = (struct sf_block *)(iteratorBlock->body.links.next);
+
+                prev->body.links.next = next;
+                next->body.links.prev = prev;
 
                 return ((void *)(iteratorBlock) + 8);
             }
@@ -185,15 +185,13 @@ void *allocate_block(int index, size_t size)
         {
             set_mem_grow_header(bp);
             set_mem_grow_epilogue();
+
             void *coalescedBlock = coalesce(bp);
-            size_t cSize = GET_SIZE(HDRP(coalescedBlock));
-            size_t bpSize = GET_SIZE(HDRP(bp));
-            if (cSize == bpSize) // didn't coalesce anything, add new block to free list
-            {
-                size_t blockSize = GET_SIZE(HDRP(coalescedBlock));
-                sf_block *blockP = (sf_block *)(HDRP(coalescedBlock));
-                insert_free_block(blockSize, blockP);
-            }
+
+            size_t blockSize = GET_SIZE(HDRP(coalescedBlock));
+            sf_block *blockP = (sf_block *)(HDRP(coalescedBlock));
+            insert_free_block(blockSize, blockP);
+
             placedSuccess = place(index, size);
             if (placedSuccess != NULL)
             {
@@ -300,7 +298,7 @@ int validatePointer(void *pp)
     // the prev_alloc bit does not match alloc of prev block
     size_t allocPrev = GET_ALLOC(HDRP(PREV_BLKP(pp)));
     size_t thisAllocPrev = GET_PREV_ALLOC(HDRP(pp));
-    if (allocPrev != thisAllocPrev)
+    if (thisAllocPrev == 0 && allocPrev != thisAllocPrev)
     {
         return 1;
     }
@@ -335,23 +333,23 @@ void *coalesce(void *bp)
     }
     else if (!prev_alloc && next_alloc)
     { /* Case 3 */
+        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
         size += GET_SIZE(HDRP(PREV_BLKP(bp)));
         size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         PUT(FTRP(bp), PACK(size, 0, prevAlloc));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, prevAlloc));
         bp = PREV_BLKP(bp);
-        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
     }
     else
     { /* Case 4 */
+        remove_pointer((sf_block *)(HDRP(NEXT_BLKP(bp))));
+        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
         size_t prevAlloc = GET_PREV_ALLOC(HDRP(PREV_BLKP(bp)));
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) +
                 GET_SIZE(FTRP(NEXT_BLKP(bp)));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0, prevAlloc));
         PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0, prevAlloc));
         bp = PREV_BLKP(bp);
-        remove_pointer((sf_block *)(HDRP(NEXT_BLKP(bp))));
-        remove_pointer((sf_block *)(HDRP(PREV_BLKP(bp))));
     }
     return bp;
 }
@@ -365,7 +363,7 @@ void sf_free(void *pp)
     }
 
     size_t size = GET_SIZE(HDRP(pp));
-    size_t prevAlloc = GET_PREV_ALLOC(HDRP(pp));
+    size_t prevAlloc = GET_ALLOC(HDRP(PREV_BLKP(pp)));
 
     PUT(HDRP(pp), PACK(size, 0, prevAlloc));
     PUT(FTRP(pp), PACK(size, 0, prevAlloc));
@@ -373,7 +371,8 @@ void sf_free(void *pp)
     void *coalescedBlock = coalesce(pp);
 
     sf_block *block = (sf_block *)(HDRP(coalescedBlock));
-    insert_free_block(GET_SIZE(HDRP(pp)), block);
+    size_t blockSize = GET_SIZE(block);
+    insert_free_block(blockSize, block);
 }
 
 void *sf_realloc(void *pp, size_t rsize)
@@ -478,6 +477,11 @@ int validate_align(size_t align)
     return 0;
 }
 
+int isAligned(void *p, size_t align)
+{
+    return ((unsigned long)(p) % align == 0) ? 0 : 1;
+}
+
 void *sf_memalign(size_t size, size_t align)
 {
     int validateSuccess = validate_align(align);
@@ -488,7 +492,42 @@ void *sf_memalign(size_t size, size_t align)
         return NULL;
     }
 
-    size_t newSize = size + align + 32 + 8;
+    size_t newSize = find_multiple(size) + align + 32 + 8;
+    void *initialBlock = sf_malloc(newSize);
 
-    return NULL;
+    // check initial alignment
+    if (!isAligned(initialBlock, align))
+    {
+        return initialBlock;
+    }
+
+    void *address = initialBlock + 16;
+
+    while (!isAligned(address, align))
+    {
+        address += 16;
+    }
+
+    if (address - initialBlock == 16)
+    {
+        address += 16;
+        while (!isAligned(address, align))
+        {
+            address += 16;
+        }
+    }
+
+    // set header and footer for free block in the beginning
+    sf_header *freeHeader = (sf_header *)(HDRP(initialBlock));
+    size_t prevAlloc = GET_PREV_ALLOC(freeHeader);
+    size_t alloc = GET_ALLOC(freeHeader);
+    *freeHeader = PACK((size_t)(address - initialBlock), alloc, prevAlloc);
+
+    sf_free(initialBlock);
+
+    sf_header *newHeader = (sf_header *)(address - 8);
+    *newHeader = PACK((size_t)(newSize - (address - initialBlock)), 0, 0);
+
+    void *p = sf_realloc(address, find_multiple(size));
+    return p;
 }
