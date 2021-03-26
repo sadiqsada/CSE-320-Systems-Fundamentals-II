@@ -318,6 +318,11 @@ int validatePointer(void *pp)
 
 void remove_pointer(sf_block *bp)
 {
+    if (NEXT_BLK(bp) == NULL || PREV_BLK(bp) == NULL)
+    {
+        return;
+    }
+
     SET_PREV_BLK(NEXT_BLK(bp), PREV_BLK(bp));
     SET_NEXT_BLK(PREV_BLK(bp), NEXT_BLK(bp));
 
@@ -506,14 +511,14 @@ void *sf_memalign(size_t size, size_t align)
     void *initialBlock = sf_malloc(newSize);
 
     // check initial alignment
-    if (!isAligned(initialBlock, align))
+    if (isAligned(initialBlock, align) == 0)
     {
         return initialBlock;
     }
 
     void *address = initialBlock + 16;
 
-    while (!isAligned(address, align))
+    while (isAligned(address, align) == 0)
     {
         address += 16;
     }
@@ -521,7 +526,7 @@ void *sf_memalign(size_t size, size_t align)
     if (address - initialBlock == 16)
     {
         address += 16;
-        while (!isAligned(address, align))
+        while (isAligned(address, align) == 0)
         {
             address += 16;
         }
@@ -536,8 +541,26 @@ void *sf_memalign(size_t size, size_t align)
     sf_free(initialBlock);
 
     sf_header *newHeader = (sf_header *)(address - 8);
-    *newHeader = PACK((size_t)(newSize - (address - initialBlock)), 0, 0);
 
-    void *p = sf_realloc(address, find_multiple(size));
-    return p;
+    size_t remSize = (newSize - (address - initialBlock));
+    size_t allocSize = find_multiple(size);
+
+    *newHeader = PACK((size_t)allocSize, 1, 0);
+
+    size_t alignedSize = remSize - allocSize;
+
+    sf_block *newAddress = (struct sf_block *)((void *)(initialBlock) + GET_SIZE(freeHeader) + allocSize);
+
+    if (remSize != 0 && alignedSize >= 32)
+    {
+        insert_free_block(alignedSize, newAddress);
+    }
+
+    sf_block *prev = (struct sf_block *)(newAddress->body.links.prev);
+    sf_block *next = (struct sf_block *)(newAddress->body.links.next);
+
+    prev->body.links.next = next;
+    next->body.links.prev = prev;
+
+    return initialBlock + (address - initialBlock);
 }
