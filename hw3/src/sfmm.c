@@ -63,7 +63,7 @@ int find_free_list_index(size_t size)
         pow = pow * 2;
         answer = answer + 1;
     }
-    return 7;
+    return 6;
 }
 
 // insert a block of size (size)
@@ -82,6 +82,14 @@ void insert_free_block(size_t size, sf_block *block)
     }
 
     int index = find_free_list_index(size);
+
+    void *nextBlockStart = (void *)block + size;
+    void *epilogueAddress = sf_mem_end() - 8;
+
+    if (nextBlockStart == epilogueAddress)
+    {
+        index = 7;
+    }
 
     // size = size, prev = 1, alloc = 0bt
     sf_header *blockHeader = (sf_header *)(&(block->header));
