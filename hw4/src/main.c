@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     char optval;
     FILE *in = NULL;
     FILE *out = stdout;
+    int quit = 0;
     //extern int sf_suppress_chatter;
     //sf_suppress_chatter = 1;
     sf_init();
@@ -52,14 +53,14 @@ int main(int argc, char *argv[])
 	}
     }
     if(in != NULL) {
-	run_cli(in, out);
+	quit = run_cli(in, out);
 	fclose(in);
 	fflush(out);
     }
-    run_cli(stdin, out);
-    fflush(out);
-    if(out != stdout)
-	fclose(out);
+    if(!quit) {
+	run_cli(stdin, out);
+	fflush(out);
+    }
     conversions_fini();
     sf_fini();
     exit(EXIT_SUCCESS);

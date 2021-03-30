@@ -84,7 +84,7 @@ extern char *job_status_names[];
  * See the assignment document for further information.
  */
 
-void run_cli(FILE *in, FILE *out);
+int run_cli(FILE *in, FILE *out);
 
 /*
  * EVENT FUNCTIONS THAT YOU MUST CALL AT SPECIFIED TIMES

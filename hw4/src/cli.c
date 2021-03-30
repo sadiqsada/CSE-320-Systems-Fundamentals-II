@@ -11,7 +11,7 @@
 #include "conversions.h"
 #include "sf_readline.h"
 
-void run_cli(FILE *in, FILE *out)
+int run_cli(FILE *in, FILE *out)
 {
     // TO BE IMPLEMENTED
     fprintf(stderr, "You have to implement run_cli() before the application will function.\n");
