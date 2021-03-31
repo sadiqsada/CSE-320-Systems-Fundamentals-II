@@ -14,6 +14,12 @@
 int run_cli(FILE *in, FILE *out)
 {
     // TO BE IMPLEMENTED
-    fprintf(stderr, "You have to implement run_cli() before the application will function.\n");
-    abort();
+    char *s = sf_readline("imp>");
+    while (*s == '\0')
+    {
+        sf_readline("imp>");
+    }
+    // fprintf(stderr, "You have to implement run_cli() before the application will function.\n");
+    // abort();
+    return 0;
 }
