@@ -27,10 +27,10 @@ int count_args(char *input, char *delim)
         }
     }
 
-    int increment = 0;
-
     if (count == 0)
         return count + 1;
+
+    int increment = 0;
 
     while (*prevPtr != '\0')
     {
@@ -45,9 +45,9 @@ int count_args(char *input, char *delim)
     return count + increment;
 }
 
-void print_arg_error(int argCount)
+void print_arg_error(int expectedArgs, int argCount)
 {
-    printf("Wrong number of args for command: help; Expected Args: 0, Provided Args: %d\n", argCount);
+    printf("Wrong number of args for command: help; Expected Args: %d, Provided Args: %d\n", expectedArgs, argCount - 1);
     sf_cmd_error("arg count");
 }
 
@@ -68,12 +68,14 @@ int run_cli(FILE *in, FILE *out)
             int quit = 0;
             while (token != NULL)
             {
+                // Miscellaneous commands
+
                 // help command
                 if (strcmp(token, "help") == 0)
                 {
-                    if (argCount > 1)
+                    if (argCount != 1)
                     {
-                        print_arg_error(argCount);
+                        print_arg_error(0, argCount);
                         break;
                     }
                     printf("%s\n", helpMessage);
@@ -82,15 +84,151 @@ int run_cli(FILE *in, FILE *out)
                 // quit command
                 if (strcmp(token, "quit") == 0)
                 {
-                    if (argCount > 1)
+                    if (argCount != 1)
                     {
-                        print_arg_error(argCount);
+                        print_arg_error(0, argCount);
                         break;
                     }
                     quit = 1;
                     sf_cmd_ok();
                     break;
                 }
+
+                // Configuration commands
+
+                // type
+                if (strcmp(token, "type") == 0)
+                {
+                    if (argCount != 2)
+                    {
+                        print_arg_error(1, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // printer
+                if (strcmp(token, "printer") == 0)
+                {
+                    if (argCount != 3)
+                    {
+                        print_arg_error(2, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // conversion
+                if (strcmp(token, "conversion") == 0)
+                {
+                    if (argCount != 4 || argCount != 5)
+                    {
+                        print_arg_error(5, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // informational commands
+                // printers
+                if (strcmp(token, "printers") == 0)
+                {
+                    if (argCount != 1)
+                    {
+                        print_arg_error(0, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+                // jobs
+                if (strcmp(token, "jobs") == 0)
+                {
+                    if (argCount != 1)
+                    {
+                        print_arg_error(0, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // spooling commands
+                // print
+                if (strcmp(token, "print") == 0)
+                {
+                    if (argCount != 2 || argCount != 3)
+                    {
+                        print_arg_error(2, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // cancel
+                if (strcmp(token, "cancel") == 0)
+                {
+                    if (argCount != 2)
+                    {
+                        print_arg_error(1, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // pause
+                if (strcmp(token, "pause") == 0)
+                {
+                    if (argCount != 2)
+                    {
+                        print_arg_error(1, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // resume
+                if (strcmp(token, "resume") == 0)
+                {
+                    if (argCount != 2)
+                    {
+                        print_arg_error(1, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // disbale
+                if (strcmp(token, "disable") == 0)
+                {
+                    if (argCount != 2)
+                    {
+                        print_arg_error(1, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
+                // enable
+                if (strcmp(token, "enable") == 0)
+                {
+                    if (argCount != 2)
+                    {
+                        print_arg_error(1, argCount);
+                        break;
+                    }
+                    sf_cmd_ok();
+                    break;
+                }
+
                 token = strtok(NULL, delim);
             }
 
