@@ -12,6 +12,8 @@
 #include "sf_readline.h"
 #include "header.h"
 
+int numPrinters = 0;
+
 // counts the number of arguments in given input
 int count_args(char *input, char *delim)
 {
@@ -50,6 +52,15 @@ void print_arg_error(int expectedArgs, int argCount)
 {
     printf("Wrong number of args for command: help; Expected Args: %d, Provided Args: %d\n", expectedArgs, argCount - 1);
     sf_cmd_error("arg count");
+}
+
+void free_printer_list()
+{
+    for (int i = 0; i < numPrinters; i++)
+    {
+        PRINTER *printer = &(printer_array[i]);
+        free(printer->printerName);
+    }
 }
 
 int run_cli(FILE *in, FILE *out)
@@ -119,6 +130,16 @@ int run_cli(FILE *in, FILE *out)
                         print_arg_error(2, argCount);
                         break;
                     }
+                    PRINTER *newPrinter = &printer_array[numPrinters];
+                    token = strtok(NULL, delim); // printer_name
+                    newPrinter->printerId = numPrinters++;
+                    newPrinter->printerName = malloc(sizeof(token));
+                    strcpy(newPrinter->printerName, token);
+                    newPrinter->printerStatus = PRINTER_IDLE;
+                    token = strtok(NULL, delim); // printer file_type
+                    newPrinter->printerFileType = find_type(token);
+
+                    sf_printer_defined(newPrinter->printerName, token);
                     sf_cmd_ok();
                     break;
                 }
@@ -237,6 +258,7 @@ int run_cli(FILE *in, FILE *out)
 
             if (quit)
             {
+                free_printer_list();
                 free(input);
                 break;
             }
