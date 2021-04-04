@@ -10,6 +10,7 @@
 #include "imprimer.h"
 #include "conversions.h"
 #include "sf_readline.h"
+#include "header.h"
 
 // counts the number of arguments in given input
 int count_args(char *input, char *delim)
@@ -104,6 +105,9 @@ int run_cli(FILE *in, FILE *out)
                         print_arg_error(1, argCount);
                         break;
                     }
+                    token = strtok(NULL, delim);
+                    printf("TYPE ARGUMENT: %s\n", token);
+                    quit = 1;
                     sf_cmd_ok();
                     break;
                 }

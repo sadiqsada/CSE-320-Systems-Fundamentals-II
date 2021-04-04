@@ -1,6 +1,3 @@
-#include <imprimer.h>
-#include <conversions.h>
-
 /*
  * Structure that describes a printer.
  */
