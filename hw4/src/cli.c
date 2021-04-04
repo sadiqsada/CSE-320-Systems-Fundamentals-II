@@ -52,6 +52,10 @@ void print_arg_error(int expectedArgs, int argCount)
     sf_cmd_error("arg count");
 }
 
+// FILE_TYPE *define_type(char *name)
+// {
+// }
+
 int run_cli(FILE *in, FILE *out)
 {
     // TO BE IMPLEMENTED
@@ -237,7 +241,10 @@ int run_cli(FILE *in, FILE *out)
             }
 
             if (quit)
+            {
+                free(input);
                 break;
+            }
         }
     }
 
