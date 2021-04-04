@@ -48,9 +48,9 @@ int count_args(char *input, char *delim)
     return count + increment;
 }
 
-void print_arg_error(int expectedArgs, int argCount)
+void print_arg_error(int expectedArgs, int argCount, FILE *out)
 {
-    printf("Wrong number of args for command: help; Expected Args: %d, Provided Args: %d\n", expectedArgs, argCount - 1);
+    fprintf(out, "Wrong number of args for command: help; Expected Args: %d, Provided Args: %d\n", expectedArgs, argCount - 1);
     sf_cmd_error("arg count");
 }
 
@@ -87,10 +87,10 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 1)
                     {
-                        print_arg_error(0, argCount);
+                        print_arg_error(0, argCount, out);
                         break;
                     }
-                    printf("%s\n", helpMessage);
+                    fprintf(out, "%s\n", helpMessage);
                     sf_cmd_ok();
                 }
                 // quit command
@@ -98,7 +98,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 1)
                     {
-                        print_arg_error(0, argCount);
+                        print_arg_error(0, argCount, out);
                         break;
                     }
                     quit = 1;
@@ -113,7 +113,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2)
                     {
-                        print_arg_error(1, argCount);
+                        print_arg_error(1, argCount, out);
                         break;
                     }
                     token = strtok(NULL, delim);
@@ -127,7 +127,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 3)
                     {
-                        print_arg_error(2, argCount);
+                        print_arg_error(2, argCount, out);
                         break;
                     }
                     PRINTER *newPrinter = &printer_array[numPrinters];
@@ -135,11 +135,12 @@ int run_cli(FILE *in, FILE *out)
                     newPrinter->printerId = numPrinters++;
                     newPrinter->printerName = malloc(sizeof(token));
                     strcpy(newPrinter->printerName, token);
-                    newPrinter->printerStatus = PRINTER_IDLE;
+                    newPrinter->printerStatus = PRINTER_DISABLED;
                     token = strtok(NULL, delim); // printer file_type
                     newPrinter->printerFileType = find_type(token);
 
                     sf_printer_defined(newPrinter->printerName, token);
+                    sf_printer_status(newPrinter->printerName, newPrinter->printerStatus);
                     sf_cmd_ok();
                     break;
                 }
@@ -149,7 +150,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 4 || argCount != 5)
                     {
-                        print_arg_error(5, argCount);
+                        print_arg_error(5, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -162,8 +163,28 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 1)
                     {
-                        print_arg_error(0, argCount);
+                        print_arg_error(0, argCount, out);
                         break;
+                    }
+                    for (int i = 0; i < numPrinters; i++)
+                    {
+                        PRINTER printer = printer_array[i];
+                        int printerStatus = (int)(printer.printerStatus);
+                        char *printerStatusString = "";
+                        if (printerStatus == 0)
+                        {
+                            printerStatusString = "disabled";
+                        }
+                        if (printerStatus == 1)
+                        {
+                            printerStatusString = "idle";
+                        }
+                        if (printerStatus == 2)
+                        {
+                            printerStatusString = "busy";
+                        }
+
+                        fprintf(out, "PRINTER: id=%d, name=%s, type=%s, status=%s\n", printer.printerId, printer.printerName, printerStatusString, (char *)(printer.printerFileType->name));
                     }
                     sf_cmd_ok();
                     break;
@@ -173,7 +194,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 1)
                     {
-                        print_arg_error(0, argCount);
+                        print_arg_error(0, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -186,7 +207,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2 || argCount != 3)
                     {
-                        print_arg_error(2, argCount);
+                        print_arg_error(2, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -198,7 +219,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2)
                     {
-                        print_arg_error(1, argCount);
+                        print_arg_error(1, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -210,7 +231,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2)
                     {
-                        print_arg_error(1, argCount);
+                        print_arg_error(1, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -222,7 +243,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2)
                     {
-                        print_arg_error(1, argCount);
+                        print_arg_error(1, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -234,7 +255,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2)
                     {
-                        print_arg_error(1, argCount);
+                        print_arg_error(1, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
@@ -246,7 +267,7 @@ int run_cli(FILE *in, FILE *out)
                 {
                     if (argCount != 2)
                     {
-                        print_arg_error(1, argCount);
+                        print_arg_error(1, argCount, out);
                         break;
                     }
                     sf_cmd_ok();
