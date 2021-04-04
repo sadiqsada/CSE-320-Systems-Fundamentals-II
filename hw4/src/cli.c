@@ -52,10 +52,6 @@ void print_arg_error(int expectedArgs, int argCount)
     sf_cmd_error("arg count");
 }
 
-// FILE_TYPE *define_type(char *name)
-// {
-// }
-
 int run_cli(FILE *in, FILE *out)
 {
     // TO BE IMPLEMENTED
@@ -110,8 +106,7 @@ int run_cli(FILE *in, FILE *out)
                         break;
                     }
                     token = strtok(NULL, delim);
-                    printf("TYPE ARGUMENT: %s\n", token);
-                    quit = 1;
+                    define_type(token);
                     sf_cmd_ok();
                     break;
                 }
