@@ -245,6 +245,8 @@ int run_cli(FILE *in, FILE *out)
                 free(input);
                 break;
             }
+
+            free(input);
         }
     }
 
