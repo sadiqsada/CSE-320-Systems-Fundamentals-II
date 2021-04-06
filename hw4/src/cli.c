@@ -369,12 +369,17 @@ int run_cli(FILE *in, FILE *out)
     if (in != stdin)
     {
         size_t read = getline(&lineptr, &n, in);
+        char *delim = " ";
         while (read != -1)
         {
-            printf("%s\n", lineptr);
-            free(lineptr);
+            if (read - 1 >= 0 && lineptr[read - 1] == '\n')
+            {
+                lineptr[read - 1] = '\0';
+            }
+            quit = handle_input(lineptr, delim, out, quit);
             read = getline(&lineptr, &n, in);
         }
+        free(lineptr);
 
         return quit ? -1 : 0;
     }
