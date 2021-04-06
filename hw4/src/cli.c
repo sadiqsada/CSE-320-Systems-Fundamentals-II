@@ -100,6 +100,7 @@ char *get_printer_status(int status)
 int run_cli(FILE *in, FILE *out)
 {
     // TO BE IMPLEMENTED
+    int quit = 0;
     while (1)
     {
         char *input = sf_readline("imp>");
@@ -111,7 +112,6 @@ int run_cli(FILE *in, FILE *out)
         {
             int argCount = count_args(input, delim);
             char *token = strtok(input, delim);
-            int quit = 0;
             while (token != NULL)
             {
                 // Miscellaneous commands
@@ -373,5 +373,5 @@ int run_cli(FILE *in, FILE *out)
 
     // fprintf(stderr, "You have to implement run_cli() before the application will function.\n");
     // abort();
-    return 0;
+    return quit ? -1 : 0;
 }
