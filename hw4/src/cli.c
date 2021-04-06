@@ -13,6 +13,7 @@
 #include "header.h"
 
 int numPrinters = 0;
+int numJobs = 0;
 
 // counts the number of arguments in given input
 int count_args(char *input, char *delim)
@@ -61,6 +62,39 @@ void free_printer_list()
         PRINTER *printer = &(printer_array[i]);
         free(printer->printerName);
     }
+}
+
+int find_printer(char *name)
+{
+    for (int i = 0; i < MAX_PRINTERS; i++)
+    {
+        char *printerName = printer_array[i].printerName;
+        if (strcmp(printerName, name) == 0)
+        {
+            // printer found - return the index
+            return i;
+        }
+    }
+    return -1; // printer not found
+}
+
+char *get_printer_status(int status)
+{
+    char *statusString;
+    if (status == 0)
+    {
+        statusString = "disabled";
+    }
+    if (status == 1)
+    {
+        statusString = "idle";
+    }
+    if (status == 2)
+    {
+        statusString = "busy";
+    }
+
+    return statusString;
 }
 
 int run_cli(FILE *in, FILE *out)
@@ -132,15 +166,30 @@ int run_cli(FILE *in, FILE *out)
                     }
                     PRINTER *newPrinter = &printer_array[numPrinters];
                     token = strtok(NULL, delim); // printer_name
-                    newPrinter->printerId = numPrinters++;
-                    newPrinter->printerName = malloc(sizeof(token));
-                    strcpy(newPrinter->printerName, token);
-                    newPrinter->printerStatus = PRINTER_DISABLED;
-                    token = strtok(NULL, delim); // printer file_type
-                    newPrinter->printerFileType = find_type(token);
+                    char *printerName = token;
 
+                    token = strtok(NULL, delim); // printer file_type
+                    FILE_TYPE *fileType = find_type(token);
+
+                    if (fileType == NULL)
+                    {
+                        fprintf(out, "Unknown file type %s\n", token);
+                        sf_cmd_error("printer");
+                        break;
+                    }
+
+                    newPrinter->printerId = numPrinters;
+                    newPrinter->printerName = malloc(sizeof(printerName));
+                    strcpy(newPrinter->printerName, printerName);
+                    newPrinter->printerStatus = PRINTER_DISABLED;
+                    newPrinter->printerFileType = fileType;
+
+                    numPrinters++;
                     sf_printer_defined(newPrinter->printerName, token);
                     sf_printer_status(newPrinter->printerName, newPrinter->printerStatus);
+
+                    char *printerStatus = get_printer_status(newPrinter->printerStatus);
+                    fprintf(out, "PRINTER: id=%d, name=%s, type=%s, status=%s\n", newPrinter->printerId, newPrinter->printerName, (char *)(newPrinter->printerFileType->name), printerStatus);
                     sf_cmd_ok();
                     break;
                 }
@@ -170,21 +219,9 @@ int run_cli(FILE *in, FILE *out)
                     {
                         PRINTER printer = printer_array[i];
                         int printerStatus = (int)(printer.printerStatus);
-                        char *printerStatusString = "";
-                        if (printerStatus == 0)
-                        {
-                            printerStatusString = "disabled";
-                        }
-                        if (printerStatus == 1)
-                        {
-                            printerStatusString = "idle";
-                        }
-                        if (printerStatus == 2)
-                        {
-                            printerStatusString = "busy";
-                        }
+                        char *printerStatusString = get_printer_status(printerStatus);
 
-                        fprintf(out, "PRINTER: id=%d, name=%s, type=%s, status=%s\n", printer.printerId, printer.printerName, printerStatusString, (char *)(printer.printerFileType->name));
+                        fprintf(out, "PRINTER: id=%d, name=%s, type=%s, status=%s\n", printer.printerId, printer.printerName, printerStatusString, printerStatusString);
                     }
                     sf_cmd_ok();
                     break;
@@ -205,11 +242,57 @@ int run_cli(FILE *in, FILE *out)
                 // print
                 if (strcmp(token, "print") == 0)
                 {
-                    if (argCount != 2 || argCount != 3)
+                    if (argCount != 2 && argCount != 3)
                     {
                         print_arg_error(2, argCount, out);
                         break;
                     }
+                    token = strtok(NULL, delim); // filename
+                    FILE_TYPE *fileType = infer_file_type(token);
+                    if (fileType == NULL)
+                    {
+                        fprintf(out, "Invalid file type");
+                        sf_cmd_error("print");
+                        break;
+                    }
+                    JOB *newJob = &job_arr[numJobs];
+                    newJob->jobId = numJobs++;
+                    newJob->jobFileType = *fileType;
+                    newJob->jobFileName = token;
+                    newJob->jobStatus = 0;
+
+                    token = strtok(NULL, delim); // eligible printers
+
+                    // if token is NULL all printers are eligible
+                    if (token == NULL)
+                    {
+                        newJob->eligiblePrinters = 0xffffffff;
+                    }
+
+                    // there is a series of printer names that are eligible
+                    else
+                    {
+                        int printerCount = 0;
+                        newJob->eligiblePrinters = 0;
+                        while (token != NULL)
+                        {
+                            int printerIndex = find_printer(token);
+                            if (printerIndex != -1)
+                            {
+                                printerCount++;
+                                // set eligiblePrinters bit
+                                newJob->eligiblePrinters = newJob->eligiblePrinters | (1 << (31 - printerIndex));
+                            }
+                            token = strtok(NULL, delim);
+                        }
+                        if (printerCount == 0)
+                        {
+                            sf_cmd_error("Printers not specified properly.");
+                        }
+                    }
+
+                    sf_job_created(numJobs, token, fileType->name);
+                    printf("JOB[%d]: file=%s, type=%s, status=%d, eligible=%08x\n", newJob->jobId, newJob->jobFileName, newJob->jobFileType.name, newJob->jobStatus, newJob->eligiblePrinters);
                     sf_cmd_ok();
                     break;
                 }
