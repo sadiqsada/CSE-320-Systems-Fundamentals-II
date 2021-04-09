@@ -15,9 +15,9 @@ typedef struct printer
 typedef struct job
 {
     int jobId;
-    FILE_TYPE jobFileType;
-    JOB_STATUS jobStatus;
     char *jobFileName;
+    JOB_STATUS jobStatus;
+    FILE_TYPE *jobFileType;
     int eligiblePrinters;
 } JOB;
 
@@ -28,7 +28,7 @@ PRINTER printer_array[MAX_PRINTERS];
 extern int numPrinters;
 
 /* Array that stores Jobs */
-JOB job_arr[MAX_JOBS];
+JOB job_array[MAX_JOBS];
 
 /* Stores the number of jobs in jobs_array*/
 extern int numJobs;

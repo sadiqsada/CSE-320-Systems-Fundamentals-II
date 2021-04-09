@@ -64,6 +64,15 @@ void free_printer_list()
     }
 }
 
+void free_job_list()
+{
+    for (int i = 0; i < numJobs; i++)
+    {
+        JOB *job = &(job_array[i]);
+        free(job->jobFileName);
+    }
+}
+
 int find_printer(char *name)
 {
     for (int i = 0; i < MAX_PRINTERS; i++)
@@ -171,7 +180,7 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                 }
 
                 newPrinter->printerId = numPrinters;
-                newPrinter->printerName = malloc(sizeof(printerName));
+                newPrinter->printerName = malloc(strlen(printerName) + 1);
                 strcpy(newPrinter->printerName, printerName);
                 newPrinter->printerStatus = PRINTER_DISABLED;
                 newPrinter->printerFileType = fileType;
@@ -226,6 +235,11 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                     print_arg_error(0, argCount, out);
                     break;
                 }
+                for (int i = 0; i < numJobs; i++)
+                {
+                    JOB *newJob = &job_array[i];
+                    fprintf(out, "JOB[%d]: file=%s, type=%s, status=%d, eligible=%08x\n", newJob->jobId, newJob->jobFileName, newJob->jobFileType->name, newJob->jobStatus, newJob->eligiblePrinters);
+                }
                 sf_cmd_ok();
                 break;
             }
@@ -247,11 +261,13 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                     sf_cmd_error("print");
                     break;
                 }
-                JOB *newJob = &job_arr[numJobs];
+                JOB *newJob = &job_array[numJobs];
+                char *jobFileName = token;
                 newJob->jobId = numJobs++;
-                newJob->jobFileType = *fileType;
-                newJob->jobFileName = token;
+                newJob->jobFileName = malloc(strlen(jobFileName) + 1);
+                strcpy(newJob->jobFileName, jobFileName);
                 newJob->jobStatus = 0;
+                newJob->jobFileType = fileType;
 
                 token = strtok(NULL, delim); // eligible printers
 
@@ -284,7 +300,7 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                 }
 
                 sf_job_created(numJobs, token, fileType->name);
-                fprintf(out, "JOB[%d]: file=%s, type=%s, status=%d, eligible=%08x\n", newJob->jobId, newJob->jobFileName, newJob->jobFileType.name, newJob->jobStatus, newJob->eligiblePrinters);
+                fprintf(out, "JOB[%d]: file=%s, type=%s, status=%d, eligible=%08x\n", newJob->jobId, newJob->jobFileName, newJob->jobFileType->name, newJob->jobStatus, newJob->eligiblePrinters);
                 sf_cmd_ok();
                 break;
             }
@@ -401,6 +417,7 @@ int run_cli(FILE *in, FILE *out)
         if (quit)
         {
             free_printer_list();
+            free_job_list();
             free(input);
             break;
         }
