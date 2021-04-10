@@ -198,11 +198,47 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
             // conversion
             if (strcmp(token, "conversion") == 0)
             {
-                if (argCount != 4 || argCount != 5)
+                if (argCount < 4)
                 {
-                    print_arg_error(5, argCount, out);
+                    print_arg_error(3, argCount, out);
                     break;
                 }
+                token = strtok(NULL, delim); // first file type
+                char *type1 = find_type(token)->name;
+
+                if (type1 == NULL)
+                {
+                    sf_cmd_error("conversion");
+                }
+
+                token = strtok(NULL, delim); // second file type
+                char *type2 = find_type(token)->name;
+
+                if (type2 == NULL)
+                {
+                    sf_cmd_error("conversion");
+                }
+
+                int count = argCount - 3;
+                token = strtok(NULL, delim); // cmd args start
+
+                char *cmdArgs[count];
+                cmdArgs[0] = token;
+                count = 1;
+                while (token != NULL)
+                {
+                    token = strtok(NULL, delim);
+                    cmdArgs[count] = token;
+                    count++;
+                }
+
+                CONVERSION *conv = define_conversion(type1, type2, cmdArgs);
+
+                if (conv == NULL)
+                {
+                    sf_cmd_error("conversion");
+                }
+
                 sf_cmd_ok();
                 break;
             }
@@ -361,6 +397,7 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                     print_arg_error(1, argCount, out);
                     break;
                 }
+
                 sf_cmd_ok();
                 break;
             }
