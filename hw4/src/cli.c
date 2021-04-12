@@ -106,6 +106,37 @@ char *get_printer_status(int status)
     return statusString;
 }
 
+// iterates through all jobs and determines if any is
+// ready to be printed
+// job is ready to be printed if
+// 1) A queued job exists
+// 2) A conversion path from the job type to the printer type exists
+// 3) Printer is in IDLE
+int is_job_ready()
+{
+    for (int i = 0; i < numJobs; i++)
+    {
+        JOB currentJob = job_array[i];
+        char *jobFileType = currentJob.jobFileType->name;
+        for (int j = 0; j < numPrinters; j++)
+        {
+            PRINTER printer = printer_array[j];
+            PRINTER_STATUS printerStatus = printer.printerStatus;
+            char *printerFileType = printer.printerFileType->name;
+            // call find_conversion_path
+            CONVERSION **path = find_conversion_path(jobFileType, printerFileType);
+
+            // no conversion
+            if (*path == NULL && printerStatus == PRINTER_IDLE)
+            {
+                // return correct printer
+                return j;
+            }
+        }
+    }
+    return -1;
+}
+
 int handle_input(char *input, char *delim, FILE *out, int quit)
 {
     char *helpMessage = "Commands are: help quit type printer conversion printers jobs print cancel disable enable pause resume";
@@ -397,7 +428,23 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                     print_arg_error(1, argCount, out);
                     break;
                 }
-
+                token = strtok(NULL, delim); // printer name
+                int index = find_printer(token);
+                if (index == -1)
+                {
+                    sf_cmd_error("enable");
+                }
+                else
+                {
+                    PRINTER *printer = &printer_array[index];
+                    printer->printerStatus = PRINTER_IDLE;
+                    int jobReadyStatus = is_job_ready();
+                    // no conversion
+                    if (jobReadyStatus > -1)
+                    {
+                        printf("%d %s\n", printer->printerStatus, "YAY READY TO FORK BOI");
+                    }
+                }
                 sf_cmd_ok();
                 break;
             }
