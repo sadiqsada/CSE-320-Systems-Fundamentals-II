@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include "imprimer.h"
 #include "conversions.h"
@@ -129,12 +132,111 @@ int is_job_ready()
             // no conversion
             if (*path == NULL && printerStatus == PRINTER_IDLE)
             {
-                // return correct printer
-                return j;
+                // return correct job
+                return i;
             }
         }
     }
     return -1;
+}
+
+void handler(int sig) {
+    int handlerChildStatus = 0;
+    waitpid(-1, &handlerChildStatus, 0);
+    printf("%s\n", "Child terminated");
+}
+
+void create_conversion_pipeline(PRINTER *printer, JOB *job) {
+    // connect to the specified printer
+    int connect = imp_connect_to_printer(printer->printerName, printer->printerFileType->name, 0);
+    if(connect == -1) {
+        printf("%s\n", "Error connecting to printer");
+    }
+    else {
+        printf("%s %d\n", "Connected to the printer, descriptor: ", connect);
+    }
+    signal(SIGCHLD, handler);
+    int childStatus = 0;
+    pid_t pid = fork(); // create master process
+
+    if(pid == -1) {
+        printf("%s\n", "Error");
+    }
+    else if(pid == 0) { // child process (Master)
+        printf("%s\n", "Master process");
+        setpgid(pid, pid); // set pgid of master process
+
+        // find conversion**, and get number of elements
+        CONVERSION **argv = find_conversion_path(job->jobFileType->name, printer->printerFileType->name);
+        int argSize = 0;
+        CONVERSION **copyArgv = argv;
+        while(*copyArgv != NULL) {
+            argSize++;
+        }
+
+        if(*argv == NULL) {
+            char *a[] = {"bin/cat", NULL};
+            pid_t childPid = fork();
+            int waitStatus = 0;
+            if(childPid == -1) {
+                printf("%s\n", "Error");
+            }
+            else if(childPid == 0) {
+                // child process
+                execvp(a[0], a);
+            }
+            else {
+                // master process
+                waitpid(-1, &waitStatus, 0);
+            }
+
+        }
+
+        else {
+            // create the argv to pass into execvp
+            char *newArgs[argSize + 1];
+            copyArgv = argv;
+
+            // set up pipe
+            int pipefd[2];
+            pipe(pipefd);
+
+            while(copyArgv != NULL) {
+                char **currArgs = (*copyArgv) -> cmd_and_args;
+                int index = 0;
+
+                while(*(currArgs) != NULL) {
+                    newArgs[index++] = *(currArgs);
+                    printf("%s\n", *(currArgs));
+                    currArgs++;
+                }
+
+                newArgs[index++] = NULL;
+
+                pid_t childPid = fork();
+                int waitStatus2 = 0;
+
+                if(childPid == -1) {
+                    printf("%s\n", "Error");
+                }
+                else if(childPid == 0) {
+                    // child process
+                    execvp(newArgs[0], newArgs);
+                }
+                else {
+                    // master process
+                    waitpid(-1, &waitStatus2, 0);
+                }
+
+                copyArgv++;
+            }
+
+        }
+    }
+    else {
+        waitpid(-1, &childStatus, 0);
+        printf("%s\n", "Main process");
+    }
 }
 
 int handle_input(char *input, char *delim, FILE *out, int quit)
@@ -438,11 +540,12 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                 {
                     PRINTER *printer = &printer_array[index];
                     printer->printerStatus = PRINTER_IDLE;
+                    sf_printer_status(printer->printerName, PRINTER_IDLE);
                     int jobReadyStatus = is_job_ready();
                     // no conversion
-                    if (jobReadyStatus > -1)
+                    if (jobReadyStatus == 0)
                     {
-                        printf("%d %s\n", printer->printerStatus, "YAY READY TO FORK BOI");
+                        create_conversion_pipeline(printer, &job_array[jobReadyStatus]);
                     }
                 }
                 sf_cmd_ok();
