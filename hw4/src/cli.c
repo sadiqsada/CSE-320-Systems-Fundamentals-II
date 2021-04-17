@@ -9,6 +9,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "imprimer.h"
 #include "conversions.h"
@@ -17,6 +19,10 @@
 
 int numPrinters = 0;
 int numJobs = 0;
+int globalPid = 0;
+
+sig_atomic_t volatile job_finished = 0;
+sig_atomic_t volatile job_paused = 0;
 
 // counts the number of arguments in given input
 int count_args(char *input, char *delim)
@@ -135,15 +141,55 @@ int is_job_ready()
                 // return correct job
                 return i;
             }
+
+            // some conversion happens
+            else {
+                return i;
+            }
         }
     }
     return -1;
 }
 
+int find_printer_from_pid(pid_t pid) {
+    for(int i = 0; i < numPrinters; i++) {
+        if(printer_array[i].printerPid == pid) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int find_job_from_pid(pid_t pid) {
+    for(int i = 0; i < numJobs; i++) {
+        if(job_array[i].jobPid == pid) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void readline_callback() {
+    pid_t pid = globalPid;
+    int jobIndex = find_job_from_pid(pid);
+    int printerIndex = find_printer_from_pid(pid);
+
+    if(job_finished) {
+        sf_job_status(job_array[jobIndex].jobId, JOB_FINISHED);
+        sf_printer_status(printer_array[printerIndex].printerName, PRINTER_IDLE);
+        job_finished = 0;
+    }
+}
+
 void handler(int sig) {
     int handlerChildStatus = 0;
     waitpid(-1, &handlerChildStatus, 0);
-    printf("%s\n", "Child terminated");
+
+    if(WIFEXITED(handlerChildStatus)) {
+        job_finished = 1;
+    }
+
+    printf("%s %d\n", "Child terminated", sig);
 }
 
 void create_conversion_pipeline(PRINTER *printer, JOB *job) {
@@ -155,16 +201,25 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
     else {
         printf("%s %d\n", "Connected to the printer, descriptor: ", connect);
     }
-    signal(SIGCHLD, handler);
     int childStatus = 0;
+
+    // set printer and job status
+    sf_job_status(job->jobId, JOB_RUNNING);
+    sf_printer_status(printer->printerName, PRINTER_BUSY);
+
     pid_t pid = fork(); // create master process
 
     if(pid == -1) {
         printf("%s\n", "Error");
+        sf_job_status(job->jobId, JOB_ABORTED);
+        sf_printer_status(printer->printerName, PRINTER_IDLE);
     }
     else if(pid == 0) { // child process (Master)
         printf("%s\n", "Master process");
         setpgid(pid, pid); // set pgid of master process
+        job->jobPid = pid;
+        printer->printerPid = pid;
+        globalPid = pid;
 
         // find conversion**, and get number of elements
         CONVERSION **argv = find_conversion_path(job->jobFileType->name, printer->printerFileType->name);
@@ -174,20 +229,48 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
             argSize++;
         }
 
+        char *copyArgv2[argSize + 1];
+        copyArgv = argv;
+        while(*copyArgv != NULL) {
+            char **currArgs = (*copyArgv) -> cmd_and_args;
+            int index = 0;
+
+            while(*(currArgs) != NULL) {
+                copyArgv2[index++] = *(currArgs);
+                currArgs++;
+            }
+
+            copyArgv++;
+        }
+
+        copyArgv2[argSize] = NULL;
+
+        // set job to started
+        sf_job_started(job->jobId, printer->printerName, getpgid(pid), copyArgv2);
+
+        int fd = open(job->jobFileName, O_RDONLY);
+
         if(*argv == NULL) {
             char *a[] = {"bin/cat", NULL};
-            pid_t childPid = fork();
+            pid_t childPid = fork(); // only child of master
             int waitStatus = 0;
             if(childPid == -1) {
                 printf("%s\n", "Error");
+                close(fd);
             }
             else if(childPid == 0) {
                 // child process
+                dup2(fd, STDIN_FILENO);
+                dup2(connect, STDOUT_FILENO);
+                close(fd);
+                close(connect);
                 execvp(a[0], a);
+                exit(0);
             }
             else {
                 // master process
                 waitpid(-1, &waitStatus, 0);
+                exit(0);
             }
 
         }
@@ -197,11 +280,8 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
             char *newArgs[argSize + 1];
             copyArgv = argv;
 
-            // set up pipe
-            int pipefd[2];
-            pipe(pipefd);
 
-            while(copyArgv != NULL) {
+            while(*copyArgv != NULL) {
                 char **currArgs = (*copyArgv) -> cmd_and_args;
                 int index = 0;
 
@@ -210,6 +290,11 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
                     printf("%s\n", *(currArgs));
                     currArgs++;
                 }
+
+                // set up pipes
+
+                int fd[2];
+                pipe(fd);
 
                 newArgs[index++] = NULL;
 
@@ -222,10 +307,12 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
                 else if(childPid == 0) {
                     // child process
                     execvp(newArgs[0], newArgs);
+                    exit(0);
                 }
                 else {
                     // master process
                     waitpid(-1, &waitStatus2, 0);
+                    exit(0);
                 }
 
                 copyArgv++;
@@ -543,7 +630,7 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                     sf_printer_status(printer->printerName, PRINTER_IDLE);
                     int jobReadyStatus = is_job_ready();
                     // no conversion
-                    if (jobReadyStatus == 0)
+                    if (jobReadyStatus >= 0)
                     {
                         create_conversion_pipeline(printer, &job_array[jobReadyStatus]);
                     }
@@ -586,6 +673,9 @@ int run_cli(FILE *in, FILE *out)
 
         return quit ? -1 : 0;
     }
+
+    signal(SIGCHLD, handler);
+    sf_set_readline_signal_hook(readline_callback);
 
     while (1)
     {
