@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <debug.h>
 
 #include "imprimer.h"
 #include "conversions.h"
@@ -22,6 +23,7 @@ int numJobs = 0;
 int globalPid = 0;
 
 sig_atomic_t volatile job_finished = 0;
+sig_atomic_t volatile job_aborted = 0;
 sig_atomic_t volatile job_paused = 0;
 
 // counts the number of arguments in given input
@@ -136,7 +138,7 @@ int is_job_ready()
             CONVERSION **path = find_conversion_path(jobFileType, printerFileType);
 
             // no conversion
-            if (*path == NULL && printerStatus == PRINTER_IDLE)
+            if (path == NULL && printerStatus == PRINTER_IDLE)
             {
                 // return correct job
                 return i;
@@ -179,6 +181,12 @@ void readline_callback() {
         sf_printer_status(printer_array[printerIndex].printerName, PRINTER_IDLE);
         job_finished = 0;
     }
+
+    if(job_aborted) {
+        sf_job_status(job_array[jobIndex].jobId, JOB_ABORTED);
+        sf_printer_status(printer_array[printerIndex].printerName, PRINTER_IDLE);
+        job_aborted = 0;
+    }
 }
 
 void handler(int sig) {
@@ -186,7 +194,7 @@ void handler(int sig) {
     waitpid(-1, &handlerChildStatus, 0);
 
     if(WIFEXITED(handlerChildStatus)) {
-        job_finished = 1;
+        job_aborted = 1;
     }
 
     printf("%s %d\n", "Child terminated", sig);
@@ -229,6 +237,7 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
             argSize++;
         }
 
+        // find size of cmds
         char *copyArgv2[argSize + 1];
         copyArgv = argv;
         while(*copyArgv != NULL) {
@@ -237,23 +246,25 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
 
             while(*(currArgs) != NULL) {
                 copyArgv2[index++] = *(currArgs);
+                printf("%s\n", copyArgv2[index - 1]);
                 currArgs++;
             }
 
             copyArgv++;
         }
 
-        copyArgv2[argSize] = NULL;
-
-        // set job to started
+        copyArgv2[argSize] = NULL;        // set job to started
         sf_job_started(job->jobId, printer->printerName, getpgid(pid), copyArgv2);
 
-        int fd = open(job->jobFileName, O_RDONLY);
 
         if(*argv == NULL) {
-            char *a[] = {"bin/cat", NULL};
-            pid_t childPid = fork(); // only child of master
+            int fd = open(job->jobFileName, O_RDONLY);
+            if(fd < 0) {
+                printf("%s\n", "Error opening the file");
+            }
+            char *a[] = {"/bin/cat", NULL};
             int waitStatus = 0;
+            pid_t childPid = fork(); // only child of master
             if(childPid == -1) {
                 printf("%s\n", "Error");
                 close(fd);
@@ -262,13 +273,18 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
                 // child process
                 dup2(fd, STDIN_FILENO);
                 dup2(connect, STDOUT_FILENO);
+                fflush(stdout);
                 close(fd);
                 close(connect);
                 execvp(a[0], a);
-                exit(0);
+                perror("execvp failed");
+                printf("%d\n", fd);
+                exit(1);
             }
             else {
                 // master process
+                close(fd);
+                close(connect);
                 waitpid(-1, &waitStatus, 0);
                 exit(0);
             }
@@ -277,46 +293,58 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
 
         else {
             // create the argv to pass into execvp
-            char *newArgs[argSize + 1];
             copyArgv = argv;
+            int fd = open(job->jobFileName, O_RDONLY);
+            int pipefd[2];
+            int prevPipe = fd;
+            int counter = 0;
 
-
-            while(*copyArgv != NULL) {
-                char **currArgs = (*copyArgv) -> cmd_and_args;
-                int index = 0;
-
-                while(*(currArgs) != NULL) {
-                    newArgs[index++] = *(currArgs);
-                    printf("%s\n", *(currArgs));
-                    currArgs++;
-                }
-
-                // set up pipes
-
-                int fd[2];
-                pipe(fd);
-
-                newArgs[index++] = NULL;
+            while(counter < argSize - 2) {
+                // set up pipe
+                pipe(pipefd);
+                debug("something");
 
                 pid_t childPid = fork();
-                int waitStatus2 = 0;
 
                 if(childPid == -1) {
                     printf("%s\n", "Error");
                 }
                 else if(childPid == 0) {
                     // child process
-                    execvp(newArgs[0], newArgs);
-                    exit(0);
-                }
-                else {
-                    // master process
-                    waitpid(-1, &waitStatus2, 0);
-                    exit(0);
+
+                    if(prevPipe != STDIN_FILENO) {
+                        dup2(prevPipe, STDIN_FILENO);
+                        close(prevPipe);
+                    }
+
+                    dup2(pipefd[1], STDOUT_FILENO);
+                    close(pipefd[1]);
+
+                    execvp(copyArgv2[counter], copyArgv2);
+
+                    perror("execvp failed");
+                    exit(1);
                 }
 
-                copyArgv++;
+                close(prevPipe);
+
+                close(pipefd[1]);
+
+                prevPipe = pipefd[0];
+
+                counter++;
             }
+
+            if(prevPipe != STDIN_FILENO) {
+                dup2(prevPipe, STDIN_FILENO);
+                close(prevPipe);
+            }
+
+            // last command
+            execvp(copyArgv2[counter], copyArgv2);
+
+            perror("execvp failed");
+            exit(1);
 
         }
     }
