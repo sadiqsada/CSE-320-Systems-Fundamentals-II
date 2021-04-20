@@ -218,12 +218,12 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
     pid_t pid = fork(); // create master process
 
     if(pid == -1) {
-        printf("%s\n", "Error");
+        debug("Error");
         sf_job_status(job->jobId, JOB_ABORTED);
         sf_printer_status(printer->printerName, PRINTER_IDLE);
     }
     else if(pid == 0) { // child process (Master)
-        printf("%s\n", "Master process");
+        debug("Master Process");
         setpgid(pid, pid); // set pgid of master process
         job->jobPid = pid;
         printer->printerPid = pid;
@@ -235,26 +235,28 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
         CONVERSION **copyArgv = argv;
         while(*copyArgv != NULL) {
             argSize++;
+            copyArgv++;
         }
 
-        // find size of cmds
-        char *copyArgv2[argSize + 1];
+        char **copyArgv2[argSize + 1];
         copyArgv = argv;
         while(*copyArgv != NULL) {
             char **currArgs = (*copyArgv) -> cmd_and_args;
             int index = 0;
-
-            while(*(currArgs) != NULL) {
-                copyArgv2[index++] = *(currArgs);
-                printf("%s\n", copyArgv2[index - 1]);
-                currArgs++;
-            }
+            copyArgv2[index++] = currArgs;
 
             copyArgv++;
         }
 
-        copyArgv2[argSize] = NULL;        // set job to started
-        sf_job_started(job->jobId, printer->printerName, getpgid(pid), copyArgv2);
+        copyArgv2[argSize] = NULL;
+
+        char *convPrograms[argSize + 1];
+        for(int i = 0; i < argSize; i++) {
+            convPrograms[i] = *(copyArgv2[i]);
+        }
+        convPrograms[argSize] = NULL;
+        // set job to started
+        sf_job_started(job->jobId, printer->printerName, getpgid(pid), convPrograms);
 
 
         if(*argv == NULL) {
@@ -299,15 +301,15 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
             int prevPipe = fd;
             int counter = 0;
 
-            while(counter < argSize - 2) {
+            while(counter < argSize - 1) {
                 // set up pipe
                 pipe(pipefd);
-                debug("something");
 
                 pid_t childPid = fork();
 
                 if(childPid == -1) {
                     printf("%s\n", "Error");
+                    exit(1);
                 }
                 else if(childPid == 0) {
                     // child process
@@ -320,7 +322,7 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
                     dup2(pipefd[1], STDOUT_FILENO);
                     close(pipefd[1]);
 
-                    execvp(copyArgv2[counter], copyArgv2);
+                    execvp(copyArgv2[counter][0], copyArgv2[counter]);
 
                     perror("execvp failed");
                     exit(1);
@@ -340,8 +342,11 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
                 close(prevPipe);
             }
 
+            dup2(connect, STDOUT_FILENO);
+            close(connect);
+
             // last command
-            execvp(copyArgv2[counter], copyArgv2);
+            execvp(copyArgv2[counter][0], copyArgv2[counter]);
 
             perror("execvp failed");
             exit(1);
@@ -351,6 +356,7 @@ void create_conversion_pipeline(PRINTER *printer, JOB *job) {
     else {
         waitpid(-1, &childStatus, 0);
         printf("%s\n", "Main process");
+        exit(0);
     }
 }
 
@@ -452,6 +458,11 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                     break;
                 }
                 token = strtok(NULL, delim); // first file type
+
+                if(find_type(token) == NULL) {
+                    exit(1);
+                }
+
                 char *type1 = find_type(token)->name;
 
                 if (type1 == NULL)
@@ -460,6 +471,11 @@ int handle_input(char *input, char *delim, FILE *out, int quit)
                 }
 
                 token = strtok(NULL, delim); // second file type
+
+                if(find_type(token) == NULL) {
+                    exit(1);
+                }
+
                 char *type2 = find_type(token)->name;
 
                 if (type2 == NULL)
