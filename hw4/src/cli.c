@@ -724,7 +724,7 @@ int run_cli(FILE *in, FILE *out)
         return quit ? -1 : 0;
     }
 
-    while (1)
+    while (!EOF)
     {
         // if out != stdout, suppress the prompt
         char *prompt = "";
