@@ -697,6 +697,9 @@ int run_cli(FILE *in, FILE *out)
 
     int quit = 0;
 
+    signal(SIGCHLD, handler);
+    sf_set_readline_signal_hook(readline_callback);
+
     // -i was specified - batch input
     char *lineptr = NULL;
     size_t n = 0;
@@ -715,11 +718,10 @@ int run_cli(FILE *in, FILE *out)
         }
         free(lineptr);
 
+        close(2);
+
         return quit ? -1 : 0;
     }
-
-    signal(SIGCHLD, handler);
-    sf_set_readline_signal_hook(readline_callback);
 
     while (1)
     {
@@ -745,6 +747,9 @@ int run_cli(FILE *in, FILE *out)
 
         free(input);
     }
+
+    close(1);
+    close(0);
     return quit ? -1 : 0;
 }
 
