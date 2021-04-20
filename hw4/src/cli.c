@@ -717,7 +717,8 @@ int run_cli(FILE *in, FILE *out)
             read = getline(&lineptr, &n, in);
         }
         free(lineptr);
-
+        free_printer_list();
+        free_job_list();
         close(2);
 
         return quit ? -1 : 0;
