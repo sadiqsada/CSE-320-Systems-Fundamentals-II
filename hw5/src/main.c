@@ -20,11 +20,36 @@ static void terminate(int);
  *
  * Usage: charla <port>
  */
-int main(int argc, char* argv[]){
+int main(int argc, char *argv[])
+{
     // Option processing should be performed here.
     // Option '-p <port>' is required in order to specify the port number
     // on which the server should listen.
+    char *p;
 
+    if (argc == 1)
+    {
+        debug("Error");
+    }
+
+    for (int i = 0; i < argc; i++)
+    {
+        // option found
+        if (strcmp(argv[i], "-p") == 0)
+        {
+            if (i + 1 < argc)
+            {
+                p = argv[i + 1];
+                break;
+            }
+            else
+            {
+                debug("Error");
+            }
+        }
+    }
+    if (argc != 1)
+        printf("%s\n", p);
     // Perform required initializations of the client_registry and
     // player_registry.
     user_registry = ureg_init();
@@ -37,7 +62,7 @@ int main(int argc, char* argv[]){
     // shutdown of the server.
 
     fprintf(stderr, "You have to finish implementing main() "
-	    "before the server will function.\n");
+                    "before the server will function.\n");
 
     terminate(EXIT_FAILURE);
 }
@@ -45,7 +70,8 @@ int main(int argc, char* argv[]){
 /*
  * Function called to cleanly shut down the server.
  */
-static void terminate(int status) {
+static void terminate(int status)
+{
     // Shut down all existing client connections.
     // This will trigger the eventual termination of service threads.
     creg_shutdown_all(client_registry);
