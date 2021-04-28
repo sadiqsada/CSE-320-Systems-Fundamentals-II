@@ -4,6 +4,7 @@
 typedef struct printer
 {
     int printerId;
+    pid_t printerPid;
     char *printerName;
     PRINTER_STATUS printerStatus;
     FILE_TYPE *printerFileType;
@@ -15,6 +16,7 @@ typedef struct printer
 typedef struct job
 {
     int jobId;
+    pid_t jobPid;
     char *jobFileName;
     JOB_STATUS jobStatus;
     FILE_TYPE *jobFileType;
