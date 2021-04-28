@@ -16,6 +16,15 @@
 
 static void terminate(int);
 
+volatile sig_atomic_t sighup;
+
+void handle_sighup(int sig)
+{
+    debug("sighup");
+    sighup = 1;
+    terminate(EXIT_FAILURE);
+}
+
 /*
  * "Charla" chat server.
  *
@@ -63,6 +72,11 @@ int main(int argc, char *argv[])
     // a SIGHUP handler, so that receipt of SIGHUP will perform a clean
     // shutdown of the server.
 
+    struct sigaction sa;
+    sa.sa_handler = &handle_sighup;
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGHUP, &sa, NULL);
+
     int listenfd, *connfdp;
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
@@ -70,7 +84,8 @@ int main(int argc, char *argv[])
 
     listenfd = Open_listenfd(p);
 
-    while (1)
+    sighup = 0;
+    while (!sighup)
     {
         clientlen = sizeof(struct sockaddr_storage);
         connfdp = Malloc(sizeof(int));
