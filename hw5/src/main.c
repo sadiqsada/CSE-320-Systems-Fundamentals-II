@@ -12,6 +12,7 @@
 #include "debug.h"
 #include "server.h"
 #include "globals.h"
+#include "csapp.h"
 
 static void terminate(int);
 
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
     }
     if (argc != 1)
         printf("%s\n", p);
+
     // Perform required initializations of the client_registry and
     // player_registry.
     user_registry = ureg_init();
@@ -60,6 +62,21 @@ int main(int argc, char *argv[])
     // run function charla_client_service().  In addition, you should install
     // a SIGHUP handler, so that receipt of SIGHUP will perform a clean
     // shutdown of the server.
+
+    int listenfd, *connfdp;
+    socklen_t clientlen;
+    struct sockaddr_storage clientaddr;
+    pthread_t tid;
+
+    listenfd = Open_listenfd(p);
+
+    while (1)
+    {
+        clientlen = sizeof(struct sockaddr_storage);
+        connfdp = Malloc(sizeof(int));
+        *connfdp = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+        Pthread_create(&tid, NULL, chla_client_service, connfdp);
+    }
 
     fprintf(stderr, "You have to finish implementing main() "
                     "before the server will function.\n");
