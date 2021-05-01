@@ -4,17 +4,9 @@
 int proto_send_packet(int fd, CHLA_PACKET_HEADER *hdr, void *payload)
 {
     // convert to network byte order
-    uint32_t newPayloadLength = htonl(hdr->payload_length);
-    uint32_t newMsgId = htonl(hdr->msgid);
-    uint32_t newTimestampSec = htonl(hdr->timestamp_sec);
-    uint32_t newTimestampNSec = htonl(hdr->timestamp_nsec);
+    uint32_t newPayloadLength = ntonl(hdr->payload_length);
 
-    hdr->payload_length = newPayloadLength;
-    hdr->msgid = newMsgId;
-    hdr->timestamp_sec = newTimestampSec;
-    hdr->timestamp_nsec = newTimestampNSec;
-
-    ssize_t writtenHeaderBytes = rio_writen(fd, hdr, sizeof(hdr));
+    ssize_t writtenHeaderBytes = rio_writen(fd, hdr, sizeof(CHLA_PACKET_HEADER));
 
     if (writtenHeaderBytes == -1)
         return -1;
@@ -33,5 +25,6 @@ int proto_send_packet(int fd, CHLA_PACKET_HEADER *hdr, void *payload)
 
 int proto_recv_packet(int fd, CHLA_PACKET_HEADER *hdr, void **payload)
 {
+
     return 0;
 }
