@@ -25,17 +25,19 @@ int proto_send_packet(int fd, CHLA_PACKET_HEADER *hdr, void *payload)
 
 int proto_recv_packet(int fd, CHLA_PACKET_HEADER *hdr, void **payload)
 {
-    ssize_t readHeaderBytes = rio_readn(fd, hdr, sizeof(CHLA_PACKET_HEADER));
+    // read header using rio_readn library func
+    ssize_t readHeaderBytes = rio_readn(fd, (void *)hdr, sizeof(CHLA_PACKET_HEADER));
 
-    if (readHeaderBytes == -1)
+    if (readHeaderBytes <= 0)
         return -1;
 
+    // if payload length is nonzero, read in payloadd
     if (hdr->payload_length != 0)
     {
         uint32_t newPayloadLength = ntohl(hdr->payload_length);
         ssize_t readPayloadBytes = rio_readn(fd, payload, newPayloadLength);
 
-        if (readPayloadBytes == -1)
+        if (readPayloadBytes <= 0)
         {
             return -1;
         }
