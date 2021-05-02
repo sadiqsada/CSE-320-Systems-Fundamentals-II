@@ -1,5 +1,6 @@
 #include "protocol.h"
 #include "csapp.h"
+#include <stdlib.h>
 
 int proto_send_packet(int fd, CHLA_PACKET_HEADER *hdr, void *payload)
 {
@@ -34,6 +35,8 @@ int proto_recv_packet(int fd, CHLA_PACKET_HEADER *hdr, void **payload)
     // if payload length is nonzero, read in payloadd
     if (hdr->payload_length != 0)
     {
+        void *newPayload = malloc(hdr->payload_length);
+        *payload = newPayload;
         uint32_t newPayloadLength = ntohl(hdr->payload_length);
         ssize_t readPayloadBytes = rio_readn(fd, payload, newPayloadLength);
 
