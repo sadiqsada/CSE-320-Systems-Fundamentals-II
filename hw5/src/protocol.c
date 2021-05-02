@@ -32,13 +32,12 @@ int proto_recv_packet(int fd, CHLA_PACKET_HEADER *hdr, void **payload)
     if (readHeaderBytes <= 0)
         return -1;
 
+    uint32_t newPayloadLength = ntohl(hdr->payload_length);
     // if payload length is nonzero, read in payloadd
-    if (hdr->payload_length != 0)
+    if (newPayloadLength != 0)
     {
-        void *newPayload = malloc(hdr->payload_length);
-        *payload = newPayload;
-        uint32_t newPayloadLength = ntohl(hdr->payload_length);
-        ssize_t readPayloadBytes = rio_readn(fd, payload, newPayloadLength);
+        *payload = malloc(newPayloadLength);
+        ssize_t readPayloadBytes = rio_readn(fd, *payload, newPayloadLength);
 
         if (readPayloadBytes <= 0)
         {
