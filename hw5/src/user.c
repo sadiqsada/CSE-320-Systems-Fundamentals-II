@@ -22,9 +22,15 @@ USER *user_create(char *handle)
     }
 
     USER *newUser = malloc(sizeof(USER));
+
+    if (newUser == NULL)
+    {
+        return NULL;
+    }
+
     Sem_init(&newUser->mutex, 0, 1);
     newUser->handle = handle;
-    newUser->refCount = 0;
+    newUser->refCount = 1;
     return newUser;
 }
 
@@ -41,18 +47,25 @@ USER *user_ref(USER *user, char *why)
 void user_unref(USER *user, char *why)
 {
     // if refcount is bigger than zero, decrement it
-    P(&user->mutex);
     if (user->refCount > 0)
     {
+        P(&user->mutex);
         user->refCount = user->refCount - 1;
+        V(&user->mutex);
+
+        // refCount has reached zero, free user
+        if (user->refCount == 0)
+        {
+            free(user);
+            return;
+        }
     }
 
-    // if refcount has reached zero, free the user
-    if (user->refCount == 0)
+    // refCount is zero, free user
+    else if (user->refCount == 0)
     {
         free(user);
     }
-    V(&user->mutex);
 }
 
 // gets the handle of user <user>
