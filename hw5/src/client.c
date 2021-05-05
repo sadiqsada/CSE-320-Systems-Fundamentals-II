@@ -65,7 +65,7 @@ void *client_unref(CLIENT *client, char *why)
 }
 
 // Searches for a client with handle <handle> in client_registry
-CLIENT *search_client(char *handle)
+CLIENT *search_client_handle(char *handle)
 {
     CLIENT_NODE *ref = client_registry->head;
     while (ref != NULL)
@@ -86,14 +86,29 @@ int client_login(CLIENT *client, char *handle)
     // lock static mutex
     P(&staticMutex);
 
-    // find whether the handle already exists
-    CLIENT *foundClient = search_client(handle);
+    // client is already logged in
+    if (client->currentUser != NULL)
+    {
+        V(&staticMutex);
+        return -1;
+    }
+
+    // find whether the handle is already logged in
+    CLIENT *foundClient = search_client_handle(handle);
 
     if (foundClient != NULL)
     {
         // client found in registry
+        V(&staticMutex);
+        return -1;
     }
+
+    USER *newUser = ureg_register(user_registry, handle);
+
+    client->currentUser = newUser;
 
     // unlock static mutex
     V(&staticMutex);
+
+    return 0;
 }
