@@ -25,6 +25,19 @@ typedef struct user_registry
     sem_t mutex;
 } USER_REGISTRY;
 
+void test_data_structure(USER_REGISTRY *ureg)
+{
+    USERNODE *ref = ureg->head;
+
+    while (ref != NULL)
+    {
+        debug("HANDLE: %s    ", ref->user->handle);
+        debug("REFCOUNT: %d\n", ref->user->refCount);
+
+        ref = ref->next;
+    }
+}
+
 /*
  * Initialize a new user registry.
  *
@@ -51,13 +64,19 @@ USER_REGISTRY *ureg_init(void)
 
     USER *dummyUser = user_create("dummy");
 
+    Sem_init(&ureg->mutex, 0, 1);
+
     head->user = dummyUser;
 
     head->next = NULL;
 
+    P(&ureg->mutex);
+
     ureg->head = head;
 
-    Sem_init(&ureg->mutex, 0, 1);
+    V(&ureg->mutex);
+
+    test_data_structure(ureg);
 
     return ureg;
 }
@@ -72,14 +91,20 @@ void ureg_fini(USER_REGISTRY *ureg)
 {
     USERNODE *ref = ureg->head;
 
+    P(&ureg->mutex);
     while (ref != NULL)
     {
-        free(ref->user->handle);
+        USERNODE *temp = ref->next;
+        while (ref->user->refCount > 0)
+        {
+            user_unref(ref->user, "remove reference for current node");
+        }
         free(ref->user);
         free(ref);
-        ref = ref->next;
+        ref = temp;
     }
-
+    V(&ureg->mutex);
+    sem_destroy(&ureg->mutex);
     free(ureg);
 }
 
@@ -129,11 +154,18 @@ USER *ureg_register(USER_REGISTRY *ureg, char *handle)
     USERNODE *foundUser = search_user(ureg, handle);
     if (foundUser != NULL)
     {
-        debug("FOUND USER...........");
-        debug("HANDLE: %s\n", foundUser->user->handle);
-        debug("REFCOUNT: %d\n", foundUser->user->refCount);
+        // debug("FOUND USER...........");
+        // debug("HANDLE: %s\n", foundUser->user->handle);
+        // debug("REFCOUNT: %d\n", foundUser->user->refCount);
         user_ref(foundUser->user, "Found a user in the registry.");
+        test_data_structure(ureg);
+        V(&ureg->mutex);
         return foundUser->user;
+    }
+
+    else
+    {
+        debug("HANDLE NOT FOUND");
     }
 
     // user does not exist in registry
@@ -157,9 +189,11 @@ USER *ureg_register(USER_REGISTRY *ureg, char *handle)
     newUsernode->next = NULL;
     ref->next = newUsernode;
 
-    debug("CREATE USER...........");
-    debug("HANDLE: %s\n", newUser->handle);
-    debug("REFCOUNT: %d\n", newUser->refCount);
+    // debug("CREATE USER...........");
+    // debug("HANDLE: %s\n", newUser->handle);
+    // debug("REFCOUNT: %d\n", newUser->refCount);
+
+    test_data_structure(ureg);
 
     V(&ureg->mutex);
     return newUser;

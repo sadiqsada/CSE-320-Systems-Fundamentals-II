@@ -74,7 +74,8 @@ int main(int argc, char *argv[])
 
     struct sigaction sa;
     sa.sa_handler = &handle_sighup;
-    sa.sa_flags = SA_RESTART;
+    sa.sa_flags = 0;
+    Sigemptyset(&sa.sa_mask);
     sigaction(SIGHUP, &sa, NULL);
 
     int listenfd, *connfdp;

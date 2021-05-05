@@ -30,7 +30,7 @@ USER *user_create(char *handle)
         return NULL;
     }
 
-    newUser->handle = malloc(sizeof(char *));
+    newUser->handle = malloc(strlen(handle) + 1);
 
     if (newUser->handle == NULL)
     {
@@ -38,7 +38,8 @@ USER *user_create(char *handle)
     }
 
     Sem_init(&newUser->mutex, 0, 1);
-    newUser->handle = handle;
+    strcpy(newUser->handle, handle);
+    // newUser->handle = handle;
     newUser->refCount = 1;
     return newUser;
 }
@@ -67,8 +68,9 @@ void user_unref(USER *user, char *why)
         // refCount has reached zero, free user
         if (user->refCount == 0)
         {
+            sem_destroy(&user->mutex);
             free(user->handle);
-            free(user);
+            // free(user);
             return;
         }
     }
