@@ -161,3 +161,15 @@ int client_get_fd(CLIENT *client)
 {
     return client->fd;
 }
+
+int client_send_packet(CLIENT *user, CHLA_PACKET_HEADER *pkt, void *data)
+{
+    P(&staticMutex);
+    int success = proto_send_packet(user->fd, pkt, data);
+    V(&staticMutex);
+    return success;
+}
+
+// int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen) {
+
+// }
