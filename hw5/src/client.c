@@ -104,11 +104,27 @@ int client_login(CLIENT *client, char *handle)
     }
 
     USER *newUser = ureg_register(user_registry, handle);
+    MAILBOX *newMailbox = mb_init(handle);
 
     client->currentUser = newUser;
+    client->currentMailbox = newMailbox;
 
     // unlock static mutex
     V(&staticMutex);
 
+    return 0;
+}
+
+int client_logout(CLIENT *client)
+{
+    // client is not logged in
+    if (client->currentUser == NULL)
+    {
+        return -1;
+    }
+
+    client->currentMailbox = NULL;
+    client->currentUser = NULL;
+    client_unref(client, "logging out client - decrease refCount");
     return 0;
 }
