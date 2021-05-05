@@ -128,3 +128,17 @@ int client_logout(CLIENT *client)
     client_unref(client, "logging out client - decrease refCount");
     return 0;
 }
+
+USER *client_get_user(CLIENT *client, int no_ref)
+{
+    if (no_ref == 0)
+    {
+        return client->currentUser;
+    }
+
+    else
+    {
+        client_ref(client, "Getting user pointer with no-ref = 0");
+        return client->currentUser;
+    }
+}
