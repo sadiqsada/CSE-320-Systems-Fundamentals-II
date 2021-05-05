@@ -138,7 +138,21 @@ USER *client_get_user(CLIENT *client, int no_ref)
 
     else
     {
-        client_ref(client, "Getting user pointer with no-ref = 0");
+        user_ref(client, "Getting user pointer with no-ref = 0");
         return client->currentUser;
+    }
+}
+
+MAILBOX *client_get_mailbox(CLIENT *client, int no_ref)
+{
+    if (no_ref == 0)
+    {
+        return client->currentMailbox;
+    }
+
+    else
+    {
+        mb_ref(client->currentMailbox, "Getting mailbox pointer with no-ref = 0");
+        return client->currentMailbox;
     }
 }
