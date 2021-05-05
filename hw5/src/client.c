@@ -156,3 +156,8 @@ MAILBOX *client_get_mailbox(CLIENT *client, int no_ref)
         return client->currentMailbox;
     }
 }
+
+int client_get_fd(CLIENT *client)
+{
+    return client->fd;
+}
