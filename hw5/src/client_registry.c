@@ -37,8 +37,8 @@ CLIENT_REGISTRY *creg_init()
         return NULL;
     }
     cr->numClients = 0;
-    Sem_init(&cr->mutex);
-    Sem_init(&cr->semaphore);
+    Sem_init(&cr->mutex, 0, 1);
+    Sem_init(&cr->semaphore, 0, 1);
     return cr;
 }
 
@@ -49,7 +49,7 @@ void creg_fini(CLIENT_REGISTRY *cr)
     P(&cr->mutex);
     while (iter != NULL)
     {
-        CLIENT *temp = iter->next;
+        CLIENT_NODE *temp = iter->next;
         free(iter->client);
         free(iter);
         iter = temp;
@@ -96,13 +96,13 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
 
     if (numClients == 1)
     {
-        P(&creg->semaphore);
+        P(&cr->semaphore);
     }
 
     // unlock the mutex
     V(&cr->mutex);
 
-    return clientNode;
+    return clientNode->client;
 }
 
 CLIENT *search_client_registry(CLIENT_REGISTRY *cr, CLIENT *client)
@@ -119,14 +119,28 @@ CLIENT *search_client_registry(CLIENT_REGISTRY *cr, CLIENT *client)
     return NULL;
 }
 
-CLIENT *search_client_registry_prev(CLIENT_REGISTRY *cr, CLIENT *client)
+CLIENT_NODE *search_client_registry_node(CLIENT_REGISTRY *cr, CLIENT *client)
+{
+    CLIENT_NODE *iter = cr->head;
+    while (iter != NULL)
+    {
+        if (iter->client->fd == client->fd)
+        {
+            return iter;
+        }
+        iter = iter->next;
+    }
+    return NULL;
+}
+
+CLIENT_NODE *search_client_registry_prev(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     CLIENT_NODE *iter = cr->head;
     while (iter->next != NULL)
     {
         if (iter->next->client->fd == client->fd)
         {
-            return iter->client;
+            return iter;
         }
         iter = iter->next;
     }
@@ -137,8 +151,8 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     // if client doesn't exist yet, error
     P(&cr->mutex);
-    CLIENT *client = search_client_registry(cr, client);
-    if (client == NULL)
+    CLIENT *newClient = search_client_registry(cr, client);
+    if (newClient == NULL)
     {
         return -1;
     }
@@ -164,9 +178,10 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
     else
     {
         // find previous node's reference and current ref
-        CLIENT *prevClient = search_client_registry_prev(cr, client);
-        prevClient->next = client->next;
-        free(client);
+        CLIENT_NODE *currClient = search_client_registry_node(cr, client);
+        CLIENT_NODE *prevClient = search_client_registry_prev(cr, client);
+        prevClient->next = currClient->next;
+        free(currClient);
     }
 
     cr->numClients--;
@@ -174,7 +189,7 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 
     if (numClients == 0)
     {
-        V(&creg->semaphore);
+        V(&cr->semaphore);
     }
     V(&cr->mutex);
 
