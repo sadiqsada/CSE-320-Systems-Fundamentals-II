@@ -58,18 +58,21 @@ void client_unref(CLIENT *client, char *why)
     V(&client->mutex);
     if (client->refCount == 0)
     {
+        sem_destroy(&client->mutex);
         free(client);
     }
 }
 
 void creg_all_clients_fini(CLIENT **clients)
 {
-    while (*clients != NULL)
+    CLIENT **iter = clients;
+    while (*iter != NULL)
     {
-        CLIENT *currClient = *clients;
+        CLIENT *currClient = *iter;
         client_unref(currClient, "removing ref of all clients in clients");
-        clients++;
+        iter++;
     }
+    free(clients);
 }
 
 // Searches for a client with handle <handle> in client_registry
@@ -120,7 +123,7 @@ int client_login(CLIENT *client, char *handle)
         return -1;
     }
 
-    free(clients);
+    creg_all_clients_fini(clients);
 
     USER *newUser = ureg_register(user_registry, handle);
     MAILBOX *newMailbox = mb_init(handle);

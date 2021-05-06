@@ -70,7 +70,6 @@ void user_unref(USER *user, char *why)
         {
             sem_destroy(&user->mutex);
             free(user->handle);
-            // free(user);
             return;
         }
     }
