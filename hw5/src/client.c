@@ -62,16 +62,26 @@ void client_unref(CLIENT *client, char *why)
     }
 }
 
-// Searches for a client with handle <handle> in client_registry
-CLIENT *search_client_handle(char *handle)
+void creg_all_clients_fini(CLIENT **clients)
 {
-    CLIENT **clients = creg_all_clients(client_registry);
     while (*clients != NULL)
     {
         CLIENT *currClient = *clients;
+        client_unref(currClient, "removing ref of all clients in clients");
+        clients++;
+    }
+}
+
+// Searches for a client with handle <handle> in client_registry
+CLIENT *search_client_handle(CLIENT **clients, char *handle)
+{
+    CLIENT **iter = clients;
+    while (*iter != NULL)
+    {
+        CLIENT *currClient = *iter;
         if (currClient->currentUser == NULL)
         {
-            clients++;
+            iter++;
         }
         else if (strcmp(currClient->currentUser->handle, handle) == 0)
         {
@@ -79,7 +89,7 @@ CLIENT *search_client_handle(char *handle)
         }
         else
         {
-            clients++;
+            iter++;
         }
     }
 
@@ -98,8 +108,10 @@ int client_login(CLIENT *client, char *handle)
         return -1;
     }
 
+    CLIENT **clients = creg_all_clients(client_registry);
+
     // find whether the handle is already logged in
-    CLIENT *foundClient = search_client_handle(handle);
+    CLIENT *foundClient = search_client_handle(clients, handle);
 
     if (foundClient != NULL)
     {
@@ -107,6 +119,8 @@ int client_login(CLIENT *client, char *handle)
         V(&staticMutex);
         return -1;
     }
+
+    free(clients);
 
     USER *newUser = ureg_register(user_registry, handle);
     MAILBOX *newMailbox = mb_init(handle);
@@ -140,7 +154,6 @@ int client_logout(CLIENT *client)
     client->currentUser = NULL;
     V(&client->mutex);
 
-    client_unref(client, "logging out client - decrease refCount");
     return 0;
 }
 
@@ -208,6 +221,12 @@ int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen)
 
     // populate the header for sending
     CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
+
+    if (packet == NULL)
+    {
+        return -1;
+    }
+
     packet->type = CHLA_ACK_PKT;
     packet->payload_length = (uint32_t)(htonl(datalen));
     packet->msgid = msgid;
@@ -235,6 +254,12 @@ int client_send_nack(CLIENT *client, uint32_t msgid)
 
     // populate the header for sending
     CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
+
+    if (packet == NULL)
+    {
+        return -1;
+    }
+
     packet->type = CHLA_NACK_PKT;
     packet->payload_length = 0;
     packet->msgid = msgid;
