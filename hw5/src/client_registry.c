@@ -4,6 +4,7 @@
 
 #include "client_registry.h"
 #include "csapp.h"
+#include "debug.h"
 
 // define the data structure (singly linked list)
 typedef struct client
@@ -29,6 +30,16 @@ typedef struct client_registry
     sem_t semaphore;
 } CLIENT_REGISTRY;
 
+void test_client_registry(CLIENT_REGISTRY *cr)
+{
+    CLIENT_NODE *iter = cr->head;
+    while (iter != NULL)
+    {
+        debug("CLIENT FD: %d CLIENT REFCOUNT: %d NUMCLIENTS: %d\n", iter->client->fd, iter->client->refCount, cr->numClients);
+        iter = iter->next;
+    }
+}
+
 CLIENT_REGISTRY *creg_init()
 {
     CLIENT_REGISTRY *cr = malloc(sizeof(CLIENT_REGISTRY));
@@ -36,6 +47,7 @@ CLIENT_REGISTRY *creg_init()
     {
         return NULL;
     }
+    cr->head = NULL;
     cr->numClients = 0;
     Sem_init(&cr->mutex, 0, 1);
     Sem_init(&cr->semaphore, 0, 1);
@@ -82,25 +94,36 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
 
     // Get reference to last node
     CLIENT_NODE *iter = cr->head;
-    while (iter != NULL)
+
+    if (iter == NULL)
     {
-        iter = iter->next;
+        cr->head = clientNode;
     }
 
-    // insert the new node into the linked list
-    iter->next = clientNode;
+    else
+    {
+        while (iter->next != NULL)
+        {
+            iter = iter->next;
+        }
+
+        // insert the new node into the linked list
+        iter->next = clientNode;
+    }
 
     cr->numClients++;
 
     int numClients = cr->numClients;
 
+    test_client_registry(cr);
+
+    // unlock the mutex
+    V(&cr->mutex);
+
     if (numClients == 1)
     {
         P(&cr->semaphore);
     }
-
-    // unlock the mutex
-    V(&cr->mutex);
 
     return clientNode->client;
 }
@@ -214,6 +237,7 @@ CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
     {
         *temp = start->client;
         temp++;
+        start = start->next;
     }
     *temp = NULL;
     return clients;
