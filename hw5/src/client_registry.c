@@ -20,3 +20,31 @@ typedef struct client_registry
 {
     CLIENT_NODE *head;
 } CLIENT_REGISTRY;
+
+CLIENT_REGISTRY *creg_init()
+{
+    return NULL;
+}
+
+void creg_fini(CLIENT_REGISTRY *cr)
+{
+}
+
+CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
+{
+    return NULL;
+}
+
+int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
+{
+    return 0;
+}
+
+CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
+{
+    return NULL;
+}
+
+void creg_shutdown_all(CLIENT_REGISTRY *cr)
+{
+}
