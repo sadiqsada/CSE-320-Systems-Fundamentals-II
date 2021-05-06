@@ -223,7 +223,7 @@ int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen)
     nsec = spec.tv_nsec;
 
     // populate the header for sending
-    CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
+    CHLA_PACKET_HEADER *packet = calloc(1, sizeof(CHLA_PACKET_HEADER));
 
     if (packet == NULL)
     {
@@ -256,7 +256,7 @@ int client_send_nack(CLIENT *client, uint32_t msgid)
     nsec = spec.tv_nsec;
 
     // populate the header for sending
-    CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
+    CHLA_PACKET_HEADER *packet = calloc(1, sizeof(CHLA_PACKET_HEADER));
 
     if (packet == NULL)
     {
