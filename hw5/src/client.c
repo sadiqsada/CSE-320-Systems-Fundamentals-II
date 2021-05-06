@@ -34,6 +34,10 @@ void initialize_mutex()
 CLIENT *client_create(CLIENT_REGISTRY *creg, int fd)
 {
     CLIENT *client = malloc(sizeof(CLIENT));
+    if (client == NULL)
+    {
+        return NULL;
+    }
     client->fd = fd;
     client->refCount = 1;
     client->currentUser = NULL;

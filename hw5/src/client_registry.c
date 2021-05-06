@@ -56,7 +56,42 @@ void creg_fini(CLIENT_REGISTRY *cr)
 
 CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
 {
-    return NULL;
+    // lock client registry
+    P(&cr->mutex);
+
+    // create the new client
+    CLIENT *newClient = client_create(cr, fd);
+    if (newClient == NULL)
+    {
+        V(&cr->mutex);
+        return NULL;
+    }
+
+    // create the wrapper client node
+    CLIENT_NODE *clientNode = malloc(sizeof(CLIENT_NODE));
+    if (clientNode == NULL)
+    {
+        V(&cr->mutex);
+        return NULL;
+    }
+
+    clientNode->client = newClient;
+    clientNode->next = NULL;
+
+    // Get reference to last node
+    CLIENT_NODE *iter = cr->head;
+    while (iter != NULL)
+    {
+        iter = iter->next;
+    }
+
+    // insert the new node into the linked list
+    iter->next = clientNode;
+
+    // unlock the mutex
+    V(&cr->mutex);
+
+    return clientNode;
 }
 
 int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
