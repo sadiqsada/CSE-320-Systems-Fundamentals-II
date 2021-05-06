@@ -1,4 +1,5 @@
 #include "client_registry.h"
+#include "csapp.h"
 
 // define the data structure (singly linked list)
 typedef struct client
