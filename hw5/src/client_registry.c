@@ -21,6 +21,7 @@ typedef struct client_registry
 {
     CLIENT_NODE *head;
     sem_t mutex;
+    sem_t semaphore;
 } CLIENT_REGISTRY;
 
 CLIENT_REGISTRY *creg_init()
@@ -32,7 +33,7 @@ CLIENT_REGISTRY *creg_init()
     }
 
     Sem_init(&cr->mutex);
-
+    Sem_init(&cr->semaphore);
     return cr;
 }
 
@@ -48,6 +49,18 @@ void creg_fini(CLIENT_REGISTRY *cr)
         free(iter);
         iter = temp;
     }
+}
+
+int count_clients(CLIENT_REGISTRY *cr)
+{
+    CLIENT_NODE *iter = cr->head;
+    int count = 0;
+    while (iter != NULL)
+    {
+        count++;
+        iter = iter->next;
+    }
+    return count;
 }
 
 CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
@@ -84,6 +97,13 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
     // insert the new node into the linked list
     iter->next = clientNode;
 
+    int numClients = count_clients(cr);
+
+    if (numClients == 1)
+    {
+        P(&creg->semaphore);
+    }
+
     // unlock the mutex
     V(&cr->mutex);
 
@@ -117,8 +137,11 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
     client_unref(client, "unregistering and unreffing this client");
 
     // if refCount hits 0
-    if (client->refCount == 0)
+    int numClients = count_clients(cr);
+
+    if (numClients == 0)
     {
+        V(&creg->semaphore);
     }
 
     return 0;
@@ -126,6 +149,7 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 
 CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
 {
+
     return NULL;
 }
 
