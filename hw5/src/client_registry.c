@@ -38,6 +38,20 @@ CLIENT_REGISTRY *creg_init()
 
 void creg_fini(CLIENT_REGISTRY *cr)
 {
+    CLIENT_NODE *iter = cr->head;
+
+    P(&cr->mutex);
+    while (iter != NULL)
+    {
+        CLIENT *temp = iter->next;
+        whlie(iter->client->refCount > 0)
+        {
+            client_unref(iter->client, "Finalizing client registry");
+        }
+        free(iter->client);
+        free(iter);
+        iter = temp;
+    }
 }
 
 CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
