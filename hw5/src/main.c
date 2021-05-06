@@ -22,7 +22,7 @@ void handle_sighup(int sig)
 {
     debug("sighup");
     sighup = 1;
-    terminate(EXIT_FAILURE);
+    terminate(EXIT_SUCCESS);
 }
 
 /*

@@ -20,11 +20,20 @@ typedef struct client_node
 typedef struct client_registry
 {
     CLIENT_NODE *head;
+    sem_t mutex;
 } CLIENT_REGISTRY;
 
 CLIENT_REGISTRY *creg_init()
 {
-    return NULL;
+    CLIENT_REGISTRY *cr = malloc(sizeof(CLIENT_REGISTRY));
+    if (cr == NULL)
+    {
+        return NULL;
+    }
+
+    Sem_init(&cr->mutex);
+
+    return cr;
 }
 
 void creg_fini(CLIENT_REGISTRY *cr)
