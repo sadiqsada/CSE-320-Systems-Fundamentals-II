@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "csapp.h"
 #include "client.h"
@@ -106,8 +107,12 @@ int client_login(CLIENT *client, char *handle)
     USER *newUser = ureg_register(user_registry, handle);
     MAILBOX *newMailbox = mb_init(handle);
 
+    P(client->mutex);
+
     client->currentUser = newUser;
     client->currentMailbox = newMailbox;
+
+    V(client->mutex);
 
     // unlock static mutex
     V(&staticMutex);
@@ -123,8 +128,11 @@ int client_logout(CLIENT *client)
         return -1;
     }
 
+    P(client->mutex);
     client->currentMailbox = NULL;
     client->currentUser = NULL;
+    V(client->mutex);
+
     client_unref(client, "logging out client - decrease refCount");
     return 0;
 }
@@ -170,6 +178,27 @@ int client_send_packet(CLIENT *user, CHLA_PACKET_HEADER *pkt, void *data)
     return success;
 }
 
-// int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen) {
+int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen)
+{
+    // get current time = packet send time
+    uint32_t sec;
+    uint32_t nsec;
+    struct timespec spec;
 
-// }
+    clock_gettime(CLOCK_REALTIME, &spec);
+    sec = spec.tv_sec;
+    nsec = spec.tv_nsec;
+
+    // populate the header for sending
+    CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
+    packet->type = CHLA_ACK_PKT;
+    packet->payload_length = (uint32_t)datalen;
+    packet->msgid = msgid;
+    packet->timestamp_sec = sec;
+    packet->timestamp_sec = nsec;
+
+    // send the packet
+    int success = client_send_packet(client, packet, data);
+
+    return success;
+}
