@@ -144,6 +144,11 @@ int client_logout(CLIENT *client)
 
 USER *client_get_user(CLIENT *client, int no_ref)
 {
+    if (client->currentUser == NULL)
+    {
+        return NULL;
+    }
+
     if (no_ref != 0)
     {
         return client->currentUser;
@@ -158,6 +163,11 @@ USER *client_get_user(CLIENT *client, int no_ref)
 
 MAILBOX *client_get_mailbox(CLIENT *client, int no_ref)
 {
+    if (client->currentUser == NULL)
+    {
+        return NULL;
+    }
+
     if (no_ref != 0)
     {
         return client->currentMailbox;
