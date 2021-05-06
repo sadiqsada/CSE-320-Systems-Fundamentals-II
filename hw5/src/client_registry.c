@@ -1,3 +1,7 @@
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "client_registry.h"
 #include "csapp.h"
 
@@ -132,6 +136,7 @@ CLIENT *search_client_registry_prev(CLIENT_REGISTRY *cr, CLIENT *client)
 int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     // if client doesn't exist yet, error
+    P(&cr->mutex);
     CLIENT *client = search_client_registry(cr, client);
     if (client == NULL)
     {
@@ -145,6 +150,7 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 
     if (numClients == 0)
     {
+        V(&cr->mutex);
         return -1;
     }
 
@@ -170,6 +176,7 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
     {
         V(&creg->semaphore);
     }
+    V(&cr->mutex);
 
     return 0;
 }
@@ -199,4 +206,15 @@ CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
 
 void creg_shutdown_all(CLIENT_REGISTRY *cr)
 {
+    P(&cr->mutex);
+    CLIENT_NODE *start = cr->head;
+    while (start != NULL)
+    {
+        shutdown(start->client->fd, SHUT_RDWR);
+        start = start->next;
+    }
+    V(&cr->mutex);
+
+    P(&cr->semaphore);
+    V(&cr->semaphore);
 }
