@@ -202,3 +202,28 @@ int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen)
 
     return success;
 }
+
+int client_send_nack(CLIENT *client, uint32_t msgid)
+{
+    // get current time = packet send time
+    uint32_t sec;
+    uint32_t nsec;
+    struct timespec spec;
+
+    clock_gettime(CLOCK_REALTIME, &spec);
+    sec = spec.tv_sec;
+    nsec = spec.tv_nsec;
+
+    // populate the header for sending
+    CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
+    packet->type = CHLA_NACK_PKT;
+    packet->payload_length = 0;
+    packet->msgid = msgid;
+    packet->timestamp_sec = sec;
+    packet->timestamp_sec = nsec;
+
+    // send the packet
+    int success = client_send_packet(client, packet, NULL);
+
+    return success;
+}
