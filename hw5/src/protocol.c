@@ -1,11 +1,14 @@
 #include "protocol.h"
 #include "csapp.h"
+#include "debug.h"
 #include <stdlib.h>
 
 int proto_send_packet(int fd, CHLA_PACKET_HEADER *hdr, void *payload)
 {
     // convert to network byte order
     uint32_t newPayloadLength = ntohl(hdr->payload_length);
+
+    debug("NEW PAYLOAD LENGTH: %d\n", newPayloadLength);
 
     ssize_t writtenHeaderBytes = rio_writen(fd, hdr, sizeof(CHLA_PACKET_HEADER));
 

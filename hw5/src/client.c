@@ -207,7 +207,7 @@ int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen)
     // populate the header for sending
     CHLA_PACKET_HEADER *packet = malloc(sizeof(CHLA_PACKET_HEADER));
     packet->type = CHLA_ACK_PKT;
-    packet->payload_length = (uint32_t)datalen;
+    packet->payload_length = (uint32_t)(htonl(datalen));
     packet->msgid = msgid;
     packet->timestamp_sec = sec;
     packet->timestamp_sec = nsec;
