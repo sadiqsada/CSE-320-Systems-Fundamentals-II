@@ -20,6 +20,7 @@ typedef struct client_node
 typedef struct client_registry
 {
     CLIENT_NODE *head;
+    int numClients;
     sem_t mutex;
     sem_t semaphore;
 } CLIENT_REGISTRY;
@@ -31,7 +32,7 @@ CLIENT_REGISTRY *creg_init()
     {
         return NULL;
     }
-
+    cr->numClients = 0;
     Sem_init(&cr->mutex);
     Sem_init(&cr->semaphore);
     return cr;
@@ -49,18 +50,6 @@ void creg_fini(CLIENT_REGISTRY *cr)
         free(iter);
         iter = temp;
     }
-}
-
-int count_clients(CLIENT_REGISTRY *cr)
-{
-    CLIENT_NODE *iter = cr->head;
-    int count = 0;
-    while (iter != NULL)
-    {
-        count++;
-        iter = iter->next;
-    }
-    return count;
 }
 
 CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
@@ -97,7 +86,9 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
     // insert the new node into the linked list
     iter->next = clientNode;
 
-    int numClients = count_clients(cr);
+    cr->numClients++;
+
+    int numClients = cr->numClients;
 
     if (numClients == 1)
     {
@@ -124,6 +115,20 @@ CLIENT *search_client_registry(CLIENT_REGISTRY *cr, CLIENT *client)
     return NULL;
 }
 
+CLIENT *search_client_registry_prev(CLIENT_REGISTRY *cr, CLIENT *client)
+{
+    CLIENT_NODE *iter = cr->head;
+    while (iter->next != NULL)
+    {
+        if (iter->next->client->fd == client->fd)
+        {
+            return iter->client;
+        }
+        iter = iter->next;
+    }
+    return NULL;
+}
+
 int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     // if client doesn't exist yet, error
@@ -136,8 +141,30 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
     // otherwise, decrease referemce count of client by one
     client_unref(client, "unregistering and unreffing this client");
 
-    // if refCount hits 0
-    int numClients = count_clients(cr);
+    int numClients = cr->numClients;
+
+    if (numClients == 0)
+    {
+        return -1;
+    }
+
+    // remove client from data structure
+    if (numClients == 1)
+    {
+        // remove the only node
+        free(client);
+    }
+
+    else
+    {
+        // find previous node's reference and current ref
+        CLIENT *prevClient = search_client_registry_prev(cr, client);
+        prevClient->next = client->next;
+        free(client);
+    }
+
+    cr->numClients--;
+    numClients = cr->numClients;
 
     if (numClients == 0)
     {
