@@ -133,6 +133,7 @@ int client_logout(CLIENT *client)
     }
 
     P(&client->mutex);
+    mb_shutdown(client->currentMailbox);
     client->currentMailbox = NULL;
     client->currentUser = NULL;
     V(&client->mutex);
