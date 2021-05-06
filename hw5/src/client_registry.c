@@ -176,8 +176,25 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 
 CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
 {
+    // initialize array to be returned
+    int numClients = cr->numClients;
+    CLIENT **clients = malloc((sizeof(CLIENT) * numClients) + 1);
 
-    return NULL;
+    if (clients == NULL)
+    {
+        return NULL;
+    }
+
+    // populate array
+    CLIENT **temp = clients;
+    CLIENT_NODE *start = cr->head;
+    while (start != NULL)
+    {
+        *temp = start->client;
+        temp++;
+    }
+    *temp = NULL;
+    return clients;
 }
 
 void creg_shutdown_all(CLIENT_REGISTRY *cr)
