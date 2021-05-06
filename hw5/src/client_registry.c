@@ -44,10 +44,6 @@ void creg_fini(CLIENT_REGISTRY *cr)
     while (iter != NULL)
     {
         CLIENT *temp = iter->next;
-        whlie(iter->client->refCount > 0)
-        {
-            client_unref(iter->client, "Finalizing client registry");
-        }
         free(iter->client);
         free(iter);
         iter = temp;
@@ -94,8 +90,37 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
     return clientNode;
 }
 
+CLIENT *search_client_registry(CLIENT_REGISTRY *cr, CLIENT *client)
+{
+    CLIENT_NODE *iter = cr->head;
+    while (iter != NULL)
+    {
+        if (iter->client->fd == client->fd)
+        {
+            return iter->client;
+        }
+        iter = iter->next;
+    }
+    return NULL;
+}
+
 int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 {
+    // if client doesn't exist yet, error
+    CLIENT *client = search_client_registry(cr, client);
+    if (client == NULL)
+    {
+        return -1;
+    }
+
+    // otherwise, decrease referemce count of client by one
+    client_unref(client, "unregistering and unreffing this client");
+
+    // if refCount hits 0
+    if (client->refCount == 0)
+    {
+    }
+
     return 0;
 }
 
