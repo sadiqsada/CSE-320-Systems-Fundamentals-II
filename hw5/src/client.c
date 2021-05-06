@@ -133,7 +133,9 @@ int client_logout(CLIENT *client)
     }
 
     P(&client->mutex);
+    user_unref(client->currentUser, "logging out client - clean user");
     mb_shutdown(client->currentMailbox);
+    mb_unref(client->currentMailbox, "loggin out client, clean mb");
     client->currentMailbox = NULL;
     client->currentUser = NULL;
     V(&client->mutex);
