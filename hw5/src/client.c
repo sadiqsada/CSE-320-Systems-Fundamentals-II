@@ -3,22 +3,18 @@
 #include <time.h>
 
 #include "csapp.h"
-#include "client.h"
 #include "globals.h"
 
 static sem_t staticMutex;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
-typedef struct client_registry
+// User Struct
+typedef struct user
 {
-    CLIENT_NODE *head;
-} CLIENT_REGISTRY;
-
-typedef struct client_node
-{
-    CLIENT *client;
-    struct client_node *next;
-} CLIENT_NODE;
+    char *handle;
+    int refCount;
+    sem_t mutex;
+} USER;
 
 // definition of Client
 typedef struct client
@@ -44,6 +40,7 @@ CLIENT *client_create(CLIENT_REGISTRY *creg, int fd)
     client->currentMailbox = NULL;
     Sem_init(&client->mutex, 0, 1);
     Pthread_once(&once, initialize_mutex);
+    return client;
 }
 
 CLIENT *client_ref(CLIENT *client, char *why)
@@ -54,7 +51,7 @@ CLIENT *client_ref(CLIENT *client, char *why)
     return client;
 }
 
-void *client_unref(CLIENT *client, char *why)
+void client_unref(CLIENT *client, char *why)
 {
     P(&client->mutex);
     client->refCount = client->refCount - 1;
@@ -68,15 +65,22 @@ void *client_unref(CLIENT *client, char *why)
 // Searches for a client with handle <handle> in client_registry
 CLIENT *search_client_handle(char *handle)
 {
-    CLIENT_NODE *ref = client_registry->head;
-    while (ref != NULL)
+    CLIENT **clients = creg_all_clients(client_registry);
+    while (*clients != NULL)
     {
-        if ((strcmp(ref->client->currentUser->handle), handle) == 0)
+        CLIENT *currClient = *clients;
+        if (currClient->currentUser == NULL)
         {
-            return ref->client;
+            clients++;
         }
-
-        ref = ref->next;
+        else if (strcmp(currClient->currentUser->handle, handle) == 0)
+        {
+            return currClient;
+        }
+        else
+        {
+            clients++;
+        }
     }
 
     return NULL;
@@ -107,12 +111,12 @@ int client_login(CLIENT *client, char *handle)
     USER *newUser = ureg_register(user_registry, handle);
     MAILBOX *newMailbox = mb_init(handle);
 
-    P(client->mutex);
+    P(&client->mutex);
 
     client->currentUser = newUser;
     client->currentMailbox = newMailbox;
 
-    V(client->mutex);
+    V(&client->mutex);
 
     // unlock static mutex
     V(&staticMutex);
@@ -128,10 +132,10 @@ int client_logout(CLIENT *client)
         return -1;
     }
 
-    P(client->mutex);
+    P(&client->mutex);
     client->currentMailbox = NULL;
     client->currentUser = NULL;
-    V(client->mutex);
+    V(&client->mutex);
 
     client_unref(client, "logging out client - decrease refCount");
     return 0;
@@ -139,21 +143,21 @@ int client_logout(CLIENT *client)
 
 USER *client_get_user(CLIENT *client, int no_ref)
 {
-    if (no_ref == 0)
+    if (no_ref != 0)
     {
         return client->currentUser;
     }
 
     else
     {
-        user_ref(client, "Getting user pointer with no-ref = 0");
+        user_ref(client->currentUser, "Getting user pointer with no-ref = 0");
         return client->currentUser;
     }
 }
 
 MAILBOX *client_get_mailbox(CLIENT *client, int no_ref)
 {
-    if (no_ref == 0)
+    if (no_ref != 0)
     {
         return client->currentMailbox;
     }
@@ -200,6 +204,8 @@ int client_send_ack(CLIENT *client, uint32_t msgid, void *data, size_t datalen)
     // send the packet
     int success = client_send_packet(client, packet, data);
 
+    free(packet);
+
     return success;
 }
 
@@ -224,6 +230,8 @@ int client_send_nack(CLIENT *client, uint32_t msgid)
 
     // send the packet
     int success = client_send_packet(client, packet, NULL);
+
+    free(packet);
 
     return success;
 }
