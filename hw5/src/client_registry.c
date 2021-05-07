@@ -72,6 +72,7 @@ void creg_fini(CLIENT_REGISTRY *cr)
         free(iter);
         iter = temp;
     }
+    free(cr);
     V(&cr->mutex);
 }
 
