@@ -4,6 +4,7 @@
 
 #include "csapp.h"
 #include "globals.h"
+#include "debug.h"
 
 static sem_t staticMutex;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
@@ -31,6 +32,14 @@ void initialize_mutex()
     sem_init(&staticMutex, 0, 1);
 }
 
+CLIENT *client_ref(CLIENT *client, char *why)
+{
+    P(&client->mutex);
+    client->refCount = client->refCount + 1;
+    V(&client->mutex);
+    return client;
+}
+
 CLIENT *client_create(CLIENT_REGISTRY *creg, int fd)
 {
     CLIENT *client = malloc(sizeof(CLIENT));
@@ -39,19 +48,12 @@ CLIENT *client_create(CLIENT_REGISTRY *creg, int fd)
         return NULL;
     }
     client->fd = fd;
-    client->refCount = 1;
     client->currentUser = NULL;
     client->currentMailbox = NULL;
     Sem_init(&client->mutex, 0, 1);
+    client_ref(client, "incrementing refCount for new client");
+    debug("increasing refCount for client %p (%d -> %d) for new client ", client, client->refCount - 1, client->refCount);
     Pthread_once(&once, initialize_mutex);
-    return client;
-}
-
-CLIENT *client_ref(CLIENT *client, char *why)
-{
-    P(&client->mutex);
-    client->refCount = client->refCount + 1;
-    V(&client->mutex);
     return client;
 }
 
@@ -73,6 +75,7 @@ void creg_all_clients_fini(CLIENT **clients)
     while (*iter != NULL)
     {
         CLIENT *currClient = *iter;
+        debug("decreasing reference count of client %p: (%d -> %d)", currClient, currClient->refCount, currClient->refCount - 1);
         client_unref(currClient, "removing ref of all clients in clients");
         iter++;
     }

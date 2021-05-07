@@ -5,6 +5,7 @@
 #include "client_registry.h"
 #include "csapp.h"
 #include "debug.h"
+#include "globals.h"
 
 // define the data structure (singly linked list)
 typedef struct client
@@ -33,7 +34,7 @@ typedef struct client_registry
 void test_client_registry(CLIENT_REGISTRY *cr)
 {
     CLIENT_NODE *iter = cr->head;
-    while (iter != NULL)
+    while (iter != NULL && iter->client != NULL)
     {
         debug("CLIENT FD: %d CLIENT REFCOUNT: %d NUMCLIENTS: %d\n", iter->client->fd, iter->client->refCount, cr->numClients);
         iter = iter->next;
@@ -64,7 +65,7 @@ void creg_fini(CLIENT_REGISTRY *cr)
     CLIENT_NODE *iter = cr->head;
 
     P(&cr->mutex);
-    while (iter != NULL)
+    while (iter != NULL && iter->client != NULL)
     {
         CLIENT_NODE *temp = iter->next;
         free(iter->client);
@@ -121,7 +122,13 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
 
     int numClients = cr->numClients;
 
+    debug("CLIENT REGISTER");
+
     test_client_registry(cr);
+
+    client_ref(clientNode->client, "increase client ref in client register");
+
+    debug("increasing refCount for client %p (%d -> %d) for new pointer being returned by creg_register", clientNode->client, clientNode->client->refCount - 1, clientNode->client->refCount);
 
     // unlock the mutex
     V(&cr->mutex);
@@ -137,7 +144,7 @@ CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
 CLIENT *search_client_registry(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     CLIENT_NODE *iter = cr->head;
-    while (iter != NULL)
+    while (iter != NULL && iter->client != NULL)
     {
         if (iter->client->fd == client->fd)
         {
@@ -184,15 +191,13 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     // if client doesn't exist yet, error
     P(&cr->mutex);
+    debug("CREG UNREGISTER");
+    test_client_registry(cr);
     CLIENT *newClient = search_client_registry(cr, client);
     if (newClient == NULL)
     {
         return -1;
     }
-
-    // otherwise, decrease referemce count of client by one
-    client_unref(client, "unregistering and unreffing this client");
-
     int numClients = cr->numClients;
 
     if (numClients == 0)
@@ -205,7 +210,10 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
     if (numClients == 1)
     {
         // remove the only node
-        free(client);
+        debug("Unregister client with fd %d", cr->head->client->fd);
+        debug("Total Connected %d", cr->numClients - 1);
+        free(cr->head);
+        cr->numClients--;
     }
 
     else
@@ -214,11 +222,13 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
         CLIENT_NODE *currClient = search_client_registry_node(cr, client);
         CLIENT_NODE *prevClient = search_client_registry_prev(cr, client);
         prevClient->next = currClient->next;
-        free(currClient);
+        cr->numClients--;
+        debug("Unregister client with fd %d", currClient->client->fd);
+        debug("Total Connected %d", cr->numClients);
     }
 
-    cr->numClients--;
     numClients = cr->numClients;
+    client_unref(client, "unregistering and unreffing this client");
 
     V(&cr->mutex);
 
@@ -234,7 +244,7 @@ CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
 {
     // initialize array to be returned
     int numClients = cr->numClients;
-    CLIENT **clients = malloc((sizeof(CLIENT) * numClients) + 1);
+    CLIENT **clients = malloc((sizeof(CLIENT *) * (numClients + 1)));
 
     if (clients == NULL)
     {
@@ -253,16 +263,22 @@ CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
         start = start->next;
     }
     *temp = NULL;
+    debug("CREG ALL CLIENTS");
+    test_client_registry(cr);
     return clients;
 }
 
 void creg_shutdown_all(CLIENT_REGISTRY *cr)
 {
+    debug("CREG SHUTDOWN ALL");
+    test_client_registry(cr);
     P(&cr->mutex);
     CLIENT_NODE *start = cr->head;
-    while (start != NULL)
+    while (start != NULL && start->client != NULL)
     {
-        shutdown(start->client->fd, SHUT_RDWR);
+        debug("SHUTTING CLIENT FD: %d", start->client->fd);
+        shutdown(start->client->fd, 2);
+        debug("CLIENT AFTER SHUTDOWN FD:%d REFCOUNT:%d", start->client->fd, start->client->refCount);
         start = start->next;
     }
     V(&cr->mutex);
