@@ -63,17 +63,21 @@ CLIENT_REGISTRY *creg_init()
 void creg_fini(CLIENT_REGISTRY *cr)
 {
     CLIENT_NODE *iter = cr->head;
+    int count = cr->numClients;
+    int i = 0;
 
     P(&cr->mutex);
-    while (iter != NULL && iter->client != NULL)
+    while (i++ < count && iter != NULL && iter->client != NULL)
     {
         CLIENT_NODE *temp = iter->next;
         free(iter->client);
         free(iter);
         iter = temp;
     }
-    free(cr);
     V(&cr->mutex);
+    sem_destroy(&cr->mutex);
+    sem_destroy(&cr->semaphore);
+    free(cr);
 }
 
 CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)

@@ -50,6 +50,7 @@ CLIENT *client_create(CLIENT_REGISTRY *creg, int fd)
     client->fd = fd;
     client->currentUser = NULL;
     client->currentMailbox = NULL;
+    client->refCount = 0;
     Sem_init(&client->mutex, 0, 1);
     client_ref(client, "incrementing refCount for new client");
     debug("increasing refCount for client %p (%d -> %d) for new client ", client, client->refCount - 1, client->refCount);
