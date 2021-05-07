@@ -47,10 +47,15 @@ CLIENT_REGISTRY *creg_init()
     {
         return NULL;
     }
-    cr->head = NULL;
-    cr->numClients = 0;
+
     Sem_init(&cr->mutex, 0, 1);
     Sem_init(&cr->semaphore, 0, 1);
+
+    P(&cr->mutex);
+    cr->head = NULL;
+    cr->numClients = 0;
+    V(&cr->mutex);
+
     return cr;
 }
 
@@ -66,6 +71,7 @@ void creg_fini(CLIENT_REGISTRY *cr)
         free(iter);
         iter = temp;
     }
+    V(&cr->mutex);
 }
 
 CLIENT *creg_register(CLIENT_REGISTRY *cr, int fd)
@@ -159,6 +165,10 @@ CLIENT_NODE *search_client_registry_node(CLIENT_REGISTRY *cr, CLIENT *client)
 CLIENT_NODE *search_client_registry_prev(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     CLIENT_NODE *iter = cr->head;
+    if (iter == NULL)
+    {
+        return NULL;
+    }
     while (iter->next != NULL)
     {
         if (iter->next->client->fd == client->fd)
@@ -210,11 +220,12 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
     cr->numClients--;
     numClients = cr->numClients;
 
+    V(&cr->mutex);
+
     if (numClients == 0)
     {
         V(&cr->semaphore);
     }
-    V(&cr->mutex);
 
     return 0;
 }
@@ -236,6 +247,8 @@ CLIENT **creg_all_clients(CLIENT_REGISTRY *cr)
     while (start != NULL)
     {
         *temp = start->client;
+        // increase ref count
+        client_ref(*temp, "increase reference count since array contains pointers to each client obj");
         temp++;
         start = start->next;
     }
