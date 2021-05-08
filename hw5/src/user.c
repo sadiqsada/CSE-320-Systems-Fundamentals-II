@@ -81,5 +81,9 @@ void user_unref(USER *user, char *why)
 // gets the handle of user <user>
 char *user_get_handle(USER *user)
 {
+    if (user == NULL)
+    {
+        return NULL;
+    }
     return user->handle;
 }
