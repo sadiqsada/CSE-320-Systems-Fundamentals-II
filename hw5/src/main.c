@@ -22,7 +22,6 @@ void handle_sighup(int sig)
 {
     debug("sighup");
     sighup = 1;
-    terminate(EXIT_SUCCESS);
 }
 
 /*
@@ -90,8 +89,13 @@ int main(int argc, char *argv[])
     {
         clientlen = sizeof(struct sockaddr_storage);
         connfdp = Malloc(sizeof(int));
-        *connfdp = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+        *connfdp = accept(listenfd, (SA *)&clientaddr, &clientlen);
         Pthread_create(&tid, NULL, chla_client_service, connfdp);
+    }
+
+    if (sighup == 1)
+    {
+        terminate(EXIT_SUCCESS);
     }
 
     fprintf(stderr, "You have to finish implementing main() "
