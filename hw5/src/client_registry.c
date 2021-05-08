@@ -62,19 +62,15 @@ CLIENT_REGISTRY *creg_init()
 
 void creg_fini(CLIENT_REGISTRY *cr)
 {
-    CLIENT_NODE *iter = cr->head;
-    int count = cr->numClients;
-    int i = 0;
+    // CLIENT_NODE *iter = cr->head;
 
-    P(&cr->mutex);
-    while (i++ < count && iter != NULL && iter->client != NULL)
-    {
-        CLIENT_NODE *temp = iter->next;
-        free(iter->client);
-        free(iter);
-        iter = temp;
-    }
-    V(&cr->mutex);
+    // P(&cr->mutex);
+    // while (iter != NULL)
+    // {
+    //     CLIENT_NODE *temp = iter->next;
+    //     iter = temp;
+    // }
+    // V(&cr->mutex);
     sem_destroy(&cr->mutex);
     sem_destroy(&cr->semaphore);
     free(cr);
@@ -163,7 +159,7 @@ CLIENT *search_client_registry(CLIENT_REGISTRY *cr, CLIENT *client)
 CLIENT_NODE *search_client_registry_node(CLIENT_REGISTRY *cr, CLIENT *client)
 {
     CLIENT_NODE *iter = cr->head;
-    while (iter != NULL)
+    while (iter != NULL && iter->client != NULL)
     {
         if (iter->client->fd == client->fd)
         {
@@ -181,7 +177,7 @@ CLIENT_NODE *search_client_registry_prev(CLIENT_REGISTRY *cr, CLIENT *client)
     {
         return NULL;
     }
-    while (iter->next != NULL)
+    while (iter->next != NULL && iter->next->client != NULL)
     {
         if (iter->next->client->fd == client->fd)
         {
@@ -226,10 +222,18 @@ int creg_unregister(CLIENT_REGISTRY *cr, CLIENT *client)
         // find previous node's reference and current ref
         CLIENT_NODE *currClient = search_client_registry_node(cr, client);
         CLIENT_NODE *prevClient = search_client_registry_prev(cr, client);
-        prevClient->next = currClient->next;
+        if (prevClient == NULL)
+        {
+            free(cr->head);
+        }
+        else
+        {
+            prevClient->next = currClient->next;
+            debug("Unregister client with fd %d", currClient->client->fd);
+            debug("Total Connected %d", cr->numClients);
+            free(currClient);
+        }
         cr->numClients--;
-        debug("Unregister client with fd %d", currClient->client->fd);
-        debug("Total Connected %d", cr->numClients);
     }
 
     numClients = cr->numClients;
